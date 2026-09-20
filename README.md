@@ -1,35 +1,37 @@
 # thibaultsolutions.com
 
-Five landing-page directions for Tyler Thibault's UGC / creator brand.
+Production-direction landing page for Tyler Thibault's UGC / creator brand.
 
-## Preview
+## Direction
 
-Open \`index.html\` locally, or deploy the repository as a static site in Coolify. Use the floating **01–05** selector to compare the five directions:
+The current site combines the two strongest prototype concepts:
 
-1. **Clean Editorial** — premium, understated, portfolio-first.
-2. **Dark Tech** — strongest fit for AI, apps, software, and creator-tech brands.
-3. **High Energy DTC** — bold, conversion-oriented, TikTok / product-ad energy.
-4. **Cinematic Premium** — higher-end product film / creative studio positioning.
-5. **Personal Creator Journal** — approachable, human, creator-first personal brand.
+- **Dark tech foundation** — credible for AI, software, apps, and creator-tech brands.
+- **Bold creator energy** — oversized typography and stronger pacing from the more aggressive concept.
+- **Electric lime accent** — replaces the earlier pink treatment.
+- **Single production site** — the five-style prototype selector has been removed.
 
-You can also open a style directly with \`#style-1\` through \`#style-5\`.
+## Current sections
 
-## Prototype placeholders
+1. Hero
+2. What I make
+3. Selected formats / portfolio placeholders
+4. Why Tyler
+5. Process
+6. Contact CTA
 
-The current version intentionally uses prototype content so the visual direction can be selected before finalizing the site.
+## Placeholder items to replace
 
-- Contact email is currently \`hello@thibaultsolutions.com\`. Change it if that is not the desired inbox.
-- Portfolio tiles are designed placeholders. Replace them with real video thumbnails / embeds once a direction is chosen.
-- The GitHub profile image is being used as temporary creator imagery. Replace it with a high-resolution vertical creator photo for the final site.
-- Copy is based around UGC, tech / AI, product demos, short-form organic content, and hook variations.
+- Contact email is currently `hello@thibaultsolutions.com`.
+- The GitHub profile photo is temporary creator imagery.
+- Portfolio blocks are designed placeholders until real vertical videos / thumbnails are supplied.
 
 ## Deployment
 
-This is plain HTML/CSS/JS and has no build step. In Coolify, it can be deployed as a static site from the repository root.
+This is plain HTML/CSS/JS with no build step and is intended to be deployed in Coolify as a **Static** application.
 
 Files:
-- \`index.html\`
-- \`styles.css\`
-- \`app.js\`
-
-Once one direction is selected, the next pass should remove the style switcher and prototype note, replace placeholder media, connect the real contact / booking CTA, tighten the copy, and optimize the selected design for production.
+- `index.html`
+- `styles.css`
+- `app.js`
+- `favicon.svg`
