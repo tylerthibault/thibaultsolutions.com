@@ -1,37 +1,69 @@
 # thibaultsolutions.com
 
-Production-direction landing page for Tyler Thibault's UGC / creator brand.
+Tyler Thibault's UGC / creator brand website.
 
-## Direction
+## Permanent design direction
 
-The current site combines the two strongest prototype concepts:
+The production site now uses the **Bold-Tech Mashup** direction.
 
-- **Dark tech foundation** — credible for AI, software, apps, and creator-tech brands.
-- **Bold creator energy** — oversized typography and stronger pacing from the more aggressive concept.
-- **Electric lime accent** — replaces the earlier pink treatment.
-- **Single production site** — the five-style prototype selector has been removed.
+The core design idea is:
 
-## Current sections
+**Bold first. Tech underneath.**
 
-1. Hero
-2. What I make
-3. Selected formats / portfolio placeholders
-4. Why Tyler
-5. Process
-6. Contact CTA
+The hero uses high-energy creator styling, oversized typography, yellow/blue editorial treatments, and hard-shadow callouts. The rest of the site settles into a darker technical system with structured grids, UI-inspired details, electric lime accents, and restrained product-focused layouts.
 
-## Placeholder items to replace
+The canonical site is:
+
+- `/index.html`
+
+## Style guide
+
+Read **`STYLE_GUIDE.md` before creating or significantly modifying any page.**
+
+It documents:
+
+- brand principles
+- color tokens
+- typography
+- spacing and responsive gutters
+- hero rules
+- navigation
+- reusable components
+- imagery
+- motion
+- copy/voice
+- accessibility
+- implementation conventions
+- templates for future pages
+
+Future pages should follow the style guide rather than independently recreating the visual style.
+
+## Prototype archive
+
+Earlier directions remain available as references:
+
+- `/tech/`
+- `/bold/`
+- `/mashup/`
+
+They are not the production homepage.
+
+## Current homepage sections
+
+1. Bold creator-first hero
+2. Tech/creator ticker
+3. What I make
+4. Selected formats / portfolio placeholders
+5. Why Tyler
+6. Process
+7. Contact CTA
+
+## Placeholder items still to replace
 
 - Contact email is currently `hello@thibaultsolutions.com`.
-- The GitHub profile photo is temporary creator imagery.
-- Portfolio blocks are designed placeholders until real vertical videos / thumbnails are supplied.
+- The GitHub profile image is temporary creator imagery.
+- Portfolio blocks are designed placeholders until real videos / thumbnails are supplied.
 
 ## Deployment
 
-This is plain HTML/CSS/JS with no build step and is intended to be deployed in Coolify as a **Static** application.
-
-Files:
-- `index.html`
-- `styles.css`
-- `app.js`
-- `favicon.svg`
+This is plain HTML/CSS with no build step and is deployed through Coolify as a **Static** application.
