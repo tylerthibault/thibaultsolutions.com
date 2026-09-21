@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07090d">
+  <meta name="description" content="Tyler Thibault creates bold, creator-led UGC and product content for tech, AI, software, and useful products.">
+  <title>Mashup Direction — Tyler Thibault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#07090d;--ink:#f2f5f1;--muted:#8d96a2;--line:#2a313b;--lime:#a3ff12;--blue:#5968ff;--cyan:#72e8ff;--display:"Space Grotesk",system-ui,sans-serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--display);overflow-x:hidden}a{color:inherit;text-decoration:none}.shell{width:min(1400px,calc(100% - 56px));margin:auto}
+    .grid{position:fixed;inset:0;z-index:-2;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(#000 0%,rgba(0,0,0,.8) 46%,transparent 82%)}
+    .glow{position:fixed;width:620px;height:620px;border-radius:50%;right:-180px;top:-180px;background:radial-gradient(circle,rgba(89,104,255,.2),transparent 68%);filter:blur(8px);z-index:-1;pointer-events:none}
+    .compare{position:fixed;right:18px;bottom:18px;z-index:99;background:#0b0e13e8;border:1px solid #35404c;border-radius:999px;padding:7px;display:flex;gap:4px;align-items:center;backdrop-filter:blur(14px);font-size:9px;box-shadow:0 18px 50px #0007}.compare span{padding:0 7px;color:#65707d}.compare a{padding:9px 12px;border-radius:999px}.compare .active{background:var(--lime);color:#091000}
+    .nav{height:86px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:11px;font-size:12px}.brand b{width:36px;height:36px;border:1px solid #39424e;border-radius:9px;display:grid;place-items:center;color:var(--lime);font-size:10px}.nav nav{display:flex;gap:28px;font-size:10px;color:#858f9b}.cta{justify-self:end;border:1px solid #3a4450;border-radius:8px;padding:11px 14px;font-size:10px}.cta span{color:var(--lime)}
+    .hero{position:relative;padding:72px 0 0}.status{display:inline-flex;align-items:center;gap:9px;border:1px solid #252c35;border-radius:6px;padding:8px 10px;color:#818b98;font-size:9px;letter-spacing:.13em}.status i{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 15px var(--lime)}
+    .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;align-items:center;gap:70px;min-height:690px;padding:20px 0 55px}.eyebrow{font-size:9px;letter-spacing:.18em;color:#6d7784;margin-bottom:20px}.hero h1{font-size:clamp(82px,9.9vw,154px);line-height:.76;letter-spacing:-.075em;margin:0;text-transform:uppercase}.hero h1 .outline{display:block;color:transparent;-webkit-text-stroke:2px var(--ink)}.hero h1 .hit{display:inline-block;color:var(--lime)}.lead{max-width:620px;font-size:17px;line-height:1.6;color:#9aa3ae;margin:34px 0 0}.actions{display:flex;gap:10px;margin-top:32px}.primary,.secondary{padding:14px 17px;border-radius:8px;font-size:11px;font-weight:700}.primary{background:var(--lime);color:#081000}.secondary{border:1px solid #37414c;color:#b8c0ca}
+    .visual{position:relative;min-height:570px;display:grid;place-items:center}.phone{width:280px;height:565px;background:#0b0e13;border:1px solid #414b57;border-radius:36px;padding:10px;position:relative;z-index:3;transform:rotate(4deg);box-shadow:0 36px 100px #0009}.phone-top{height:38px;padding:7px 12px;display:flex;justify-content:space-between;color:#707a87;font-size:8px}.screen{height:calc(100% - 38px);border-radius:25px;position:relative;overflow:hidden;padding:18px;background:linear-gradient(160deg,#28304b,#131822 50%,#0f1318)}.tag{font-size:8px;letter-spacing:.13em;border:1px solid #4d5662;border-radius:999px;padding:6px 8px}.avatar{position:absolute;top:78px;left:50%;transform:translateX(-50%);width:140px;height:140px;border-radius:50%;overflow:hidden;filter:saturate(.45)}.avatar img{width:100%;height:100%;object-fit:cover}.screen-copy{position:absolute;left:20px;right:20px;bottom:38px}.screen-copy small{font-size:7px;letter-spacing:.14em;color:var(--lime)}.screen-copy h2{font-size:23px;line-height:1.05;letter-spacing:-.04em;margin:8px 0 0}.screen-copy h2 span{color:var(--lime)}
+    .poster-note{position:absolute;z-index:4;background:var(--lime);color:#091000;border:2px solid #091000;padding:13px 15px;font-size:10px;font-weight:700;box-shadow:5px 5px 0 #091000;transform:rotate(-5deg);left:-2%;top:17%}.poster-note.blue{background:var(--cyan);left:auto;right:-2%;top:auto;bottom:18%;transform:rotate(5deg)}
+    .ticker{border-top:1px solid #313a45;border-bottom:1px solid #313a45;background:var(--blue);overflow:hidden;white-space:nowrap;color:#fff;padding:13px 0;font-size:11px;font-weight:700;letter-spacing:.1em}.ticker div{width:max-content;animation:ticker 19s linear infinite}@keyframes ticker{to{transform:translateX(-50%)}}
+    .section{padding:110px 0}.head{display:grid;grid-template-columns:1.15fr .85fr;gap:70px;align-items:end;margin-bottom:46px}.head span{font-size:9px;letter-spacing:.16em;color:#687381}.head h2{font-size:clamp(52px,5.6vw,82px);line-height:.88;letter-spacing:-.06em;margin:11px 0 0;text-transform:uppercase}.head h2 b{color:var(--lime)}.head p{color:#7f8996;line-height:1.6;max-width:470px;justify-self:end}
+    .strips{border-top:1px solid #303844}.strip{display:grid;grid-template-columns:70px 1.2fr 1fr 34px;align-items:center;gap:25px;padding:28px 18px;border-bottom:1px solid #303844;transition:.2s}.strip:hover{background:#0f141b}.strip:nth-child(2){background:var(--lime);color:#091000;border-color:#091000}.strip:nth-child(2):hover{background:#b0ff38}.strip:nth-child(4){background:var(--blue);color:#fff;border-color:#303d9a}.strip>span{font-size:9px}.strip small{font-size:8px;letter-spacing:.14em}.strip h3{font-size:28px;letter-spacing:-.035em;margin:6px 0 0}.strip p{font-size:12px;line-height:1.5;margin:0}.strip strong{font-size:26px}
+    .work-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.feature{border:1px solid #2b333d;border-radius:14px;overflow:hidden;background:#0d1117}.feature.large{grid-row:span 2}.art{position:relative;height:390px;padding:20px;overflow:hidden}.large .art{height:660px}.software{background:radial-gradient(circle at 75% 18%,rgba(163,255,18,.12),transparent 22%),linear-gradient(150deg,#1c2a38,#10141a 60%,#0b0e12)}.hooks{background:linear-gradient(145deg,#5968ff,#202544 64%,#0d1016)}.education{background:linear-gradient(145deg,#123e6d,#0d1926 66%,#0d1016)}.art-meta{display:flex;justify-content:space-between;font-size:8px;letter-spacing:.13em;color:#9aa3ae}.mock{position:absolute;left:9%;right:9%;bottom:14%;height:58%;border:1px solid #ffffff24;background:#0b0e13d9;border-radius:12px;padding:16px;display:flex;flex-direction:column}.mock i{height:7px;width:60%;background:#29313b;border-radius:5px;margin-bottom:9px}.mock i:nth-child(2){width:77%}.mock i:nth-child(3){width:42%}.mock strong{font-size:clamp(25px,2.7vw,40px);line-height:1.04;letter-spacing:-.045em;margin-top:auto}.big{position:absolute;left:25px;bottom:25px;font-size:66px;line-height:.82;letter-spacing:-.075em;font-weight:700}.circles{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px}.circles b{width:70px;height:70px;border:1px solid #ffffff42;border-radius:50%;display:grid;place-items:center;font-size:9px}.circles em{font-style:normal;color:var(--lime)}.feature-copy{padding:19px 20px}.feature-copy small{font-size:8px;letter-spacing:.14em;color:#687381}.feature-copy h3{font-size:21px;margin:8px 0 5px}.feature-copy p{font-size:11px;color:#75808c;margin:0}
+    .proof{background:linear-gradient(140deg,#101720,#090c10 70%);border-top:1px solid #2a323b;border-bottom:1px solid #2a323b;padding:115px 0}.proof-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:90px;align-items:center}.proof span{font-size:9px;letter-spacing:.15em;color:#687381}.proof h2{font-size:clamp(58px,6.4vw,96px);line-height:.86;letter-spacing:-.065em;margin:17px 0 34px;text-transform:uppercase}.proof h2 b{color:var(--lime)}.proof p{font-size:15px;line-height:1.68;color:#8b95a1;max-width:680px}.facts{border:1px solid #313a45;border-radius:15px;padding:15px;background:#0a0d12aa}.fact{display:grid;grid-template-columns:45px 1fr;gap:8px;padding:18px 12px;border-bottom:1px solid #28303a}.fact:last-child{border-bottom:0}.fact>span{color:var(--lime)}.fact div{display:flex;justify-content:space-between}.fact b{font-size:13px}.fact small{font-size:10px;color:#687381}
+    .process{padding:110px 0}.steps{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #303844;border-left:1px solid #303844}.steps div{min-height:260px;padding:23px;border-right:1px solid #303844;border-bottom:1px solid #303844;position:relative}.steps span{font-size:9px;color:var(--lime)}.steps h3{font-size:22px;margin-top:65px}.steps p{font-size:11px;line-height:1.55;color:#76808c}.steps div:nth-child(2){background:#111722}.steps div:nth-child(4){background:linear-gradient(150deg,rgba(89,104,255,.22),transparent)}
+    .contact{background:var(--lime);color:#081000;padding:90px 0 34px}.contact-inner{display:flex;justify-content:space-between;align-items:flex-end}.contact small{font-size:9px;letter-spacing:.14em}.contact h2{font-size:clamp(70px,8.7vw,132px);line-height:.79;letter-spacing:-.075em;text-transform:uppercase;margin:28px 0}.contact h2 span{color:var(--blue)}.contact a{width:180px;height:180px;border-radius:50%;background:#081000;color:#fff;display:grid;place-items:center;text-align:center;font-size:11px;font-weight:700;transform:rotate(-5deg)}
+    @media(max-width:960px){.shell{width:min(100% - 30px,1400px)}.nav{grid-template-columns:1fr auto}.nav nav{display:none}.hero-grid{grid-template-columns:1fr}.hero h1{font-size:clamp(74px,18vw,130px)}.visual{min-height:620px}.head{grid-template-columns:1fr}.head p{justify-self:start}.work-grid{grid-template-columns:1fr}.feature.large{grid-row:auto}.large .art{height:560px}.proof-grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr}.strip{grid-template-columns:55px 1fr 30px}.strip p{grid-column:2}.contact-inner{display:block}.contact a{margin-top:42px;width:135px;height:135px}}
+    @media(max-width:580px){.brand span{display:none}.hero h1{font-size:59px;-webkit-text-stroke-width:1px}.visual{min-height:550px}.phone{width:245px;height:500px}.poster-note{font-size:8px}.strips .strip{grid-template-columns:35px 1fr 25px;padding:23px 10px}.strip h3{font-size:21px}.head h2{font-size:46px}.large .art,.art{height:420px}.big{font-size:50px}.circles b{width:58px;height:58px}.proof h2{font-size:49px}.fact div{display:block}.fact small{display:block;margin-top:5px}.steps{grid-template-columns:1fr}.contact h2{font-size:58px}.compare{right:10px;bottom:10px}.compare span{display:none}}
+    @media(prefers-reduced-motion:reduce){.ticker div{animation:none}}
+  </style>
+</head>
+<body>
+  <div class="grid"></div><div class="glow"></div>
+  <div class="compare"><span>COMPARE</span><a href="/tech/">TECH</a><a href="/bold/">BOLD</a><a class="active" href="/mashup/">MASHUP</a></div>
+
+  <header class="nav shell">
+    <a class="brand" href="/mashup/"><b>TT</b><span>Tyler Thibault</span></a>
+    <nav><a href="#services">What I make</a><a href="#work">Work</a><a href="#about">Why me</a><a href="#contact">Contact</a></nav>
+    <a class="cta" href="#contact">WORK WITH ME <span>↗</span></a>
+  </header>
+
+  <main>
+    <section class="hero shell">
+      <div class="status"><i></i> AVAILABLE FOR UGC PROJECTS</div>
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">CREATOR × BUILDER × PRODUCT STORYTELLER</p>
+          <h1>Make<br>the product<br><span class="outline">impossible to</span> <span class="hit">ignore.</span></h1>
+          <p class="lead">UGC, demos, and short-form product content with the technical clarity of a builder and the energy of something made for the feed.</p>
+          <div class="actions"><a class="primary" href="#work">SEE MY WORK ↘</a><a class="secondary" href="#services">WHAT I MAKE</a></div>
+        </div>
+        <div class="visual">
+          <div class="poster-note">HOOK FIRST.<br>FEATURE SECOND. ↗</div>
+          <div class="poster-note blue">BUILT FOR<br>9:16</div>
+          <div class="phone">
+            <div class="phone-top"><span>9:41</span><span>● ● ●</span></div>
+            <div class="screen">
+              <span class="tag">TECH UGC</span>
+              <div class="avatar"><img src="https://avatars.githubusercontent.com/u/16256497?v=4" alt="Tyler Thibault"></div>
+              <div class="screen-copy"><small>THE POINT</small><h2>Your product has a feature. <span>I find the reason people care.</span></h2></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="ticker"><div>HOOKS THAT HIT ✦ PRODUCT PROOF ✦ CREATOR ENERGY ✦ TECH THAT MAKES SENSE ✦ HOOKS THAT HIT ✦ PRODUCT PROOF ✦ CREATOR ENERGY ✦ TECH THAT MAKES SENSE ✦</div></div>
+
+    <section class="section shell" id="services">
+      <div class="head"><div><span>01 / WHAT I MAKE</span><h2>Tech brain.<br><b>Creator energy.</b></h2></div><p>Enough structure to explain a real product. Enough personality that it still belongs on TikTok, Reels, or a paid social feed.</p></div>
+      <div class="strips">
+        <article class="strip"><span>01</span><div><small>UGC ADS</small><h3>Make the problem feel immediate.</h3></div><p>Strong hooks, real product use, proof, and a CTA that feels native.</p><strong>↗</strong></article>
+        <article class="strip"><span>02</span><div><small>APP / SOFTWARE DEMOS</small><h3>Make the feature feel obvious.</h3></div><p>On-camera context plus screen proof for tech, AI, apps, and SaaS.</p><strong>↗</strong></article>
+        <article class="strip"><span>03</span><div><small>ORGANIC SHORT-FORM</small><h3>Useful enough to save.</h3></div><p>Education, experiments, creator POV, and actual payoff.</p><strong>↗</strong></article>
+        <article class="strip"><span>04</span><div><small>HOOK VARIATIONS</small><h3>Don’t gamble on one opening.</h3></div><p>Multiple emotional angles filmed while the setup is already live.</p><strong>↗</strong></article>
+      </div>
+    </section>
+
+    <section class="section shell" id="work">
+      <div class="head"><div><span>02 / SELECTED FORMATS</span><h2>Built to <b>move.</b></h2></div><p>Portfolio placeholders for now. The final version will swap these concepts for your real vertical videos and thumbnails.</p></div>
+      <div class="work-grid">
+        <article class="feature large"><div class="art software"><div class="art-meta"><span>01 / SOFTWARE STORY</span><span>UGC DEMO</span></div><div class="mock"><i></i><i></i><i></i><strong>“I built this because the normal way was annoying.”</strong></div></div><div class="feature-copy"><small>FOUNDER-STYLE UGC</small><h3>Make the software feel human.</h3><p>Context first. Feature second. Proof where it matters.</p></div></article>
+        <article class="feature"><div class="art hooks"><div class="art-meta"><span>02 / PERFORMANCE</span><span>HOOK MATRIX</span></div><div class="big">STOP<br>SCROLLING.</div></div><div class="feature-copy"><small>CREATIVE TESTING</small><h3>Same product. Better angles.</h3><p>Several openings around different viewer motivations.</p></div></article>
+        <article class="feature"><div class="art education"><div class="art-meta"><span>03 / ORGANIC</span><span>EDUCATION</span></div><div class="circles"><b>HOOK</b><em>→</em><b>IDEA</b><em>→</em><b>PAYOFF</b></div></div><div class="feature-copy"><small>EDUCATIONAL SOCIAL</small><h3>Teach something that sticks.</h3><p>A clear idea with a reason to stay for the payoff.</p></div></article>
+      </div>
+    </section>
+
+    <section class="proof" id="about">
+      <div class="shell proof-grid">
+        <div><span>03 / WHY TYLER</span><h2>I figure out <b>why it matters.</b></h2><p>I’m a creator, but I’m also a builder. I work around software, AI, creator tools, workflows, and learning systems, so I can understand the product before I start performing a script about it.</p><p>The advantage is simple: technical nuance becomes something useful on camera instead of something that gets edited out.</p></div>
+        <div class="facts"><div class="fact"><span>01</span><div><b>Short-form first</b><small>Hooks, pacing, retention</small></div></div><div class="fact"><span>02</span><div><b>Technical fluency</b><small>Apps, AI, software, workflows</small></div></div><div class="fact"><span>03</span><div><b>Flexible output</b><small>Edited finals, variants, raw</small></div></div><div class="fact"><span>04</span><div><b>Actual point of view</b><small>Not feature-list narration</small></div></div></div>
+      </div>
+    </section>
+
+    <section class="process shell">
+      <div class="head"><div><span>04 / PROCESS</span><h2>Brief to final.<br><b>No mystery.</b></h2></div><p>Fast enough to keep momentum. Structured enough that we know what we’re testing before the camera turns on.</p></div>
+      <div class="steps"><div><span>01</span><h3>You send the brief.</h3><p>Product, audience, goals, must-says, references.</p></div><div><span>02</span><h3>I find the angles.</h3><p>Hooks, story beats, demo moments, proof points.</p></div><div><span>03</span><h3>I shoot + edit.</h3><p>Direct-to-camera, product use, screen capture, captions.</p></div><div><span>04</span><h3>You get options.</h3><p>Finals, alternate hooks, cutdowns, and raw footage.</p></div></div>
+    </section>
+
+    <footer class="contact" id="contact">
+      <div class="shell contact-inner"><div><small>READY WHEN YOU ARE</small><h2>Give me<br>the product.<br><span>I’ll find the story.</span></h2></div><a href="mailto:hello@thibaultsolutions.com">EMAIL<br>TYLER ↗</a></div>
+    </footer>
+  </main>
+</body>
+</html>
