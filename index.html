@@ -1,296 +1,121 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Tyler Thibault creates UGC, product demos, and short-form content for tech, AI, software, creator tools, and useful products." />
-  <meta name="theme-color" content="#080a0d" />
-  <meta property="og:title" content="Tyler Thibault — UGC Creator" />
-  <meta property="og:description" content="UGC, demos, and short-form product content that makes the value click." />
-  <meta property="og:type" content="website" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f2ef3f">
+  <meta name="description" content="Tyler Thibault creates bold, creator-led UGC and product content for tech, AI, software, and useful products.">
+  <meta property="og:title" content="Tyler Thibault — UGC Creator">
+  <meta property="og:description" content="Bold creator energy backed by the technical clarity to explain what the product actually does.">
+  <meta property="og:type" content="website">
   <title>Tyler Thibault — UGC Creator</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="site-20260920.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#07090d;--ink:#f2f5f1;--muted:#8d96a2;--line:#2a313b;--lime:#a3ff12;--blue:#5968ff;--cyan:#72e8ff;--yellow:#f2ef3f;--display:"Space Grotesk",system-ui,sans-serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--display);overflow-x:hidden}a{color:inherit;text-decoration:none}.shell{width:min(1400px,calc(100% - 56px));margin:auto}
+    .grid{position:fixed;inset:0;z-index:-2;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(#000 0%,rgba(0,0,0,.8) 46%,transparent 82%)}
+    .glow{position:fixed;width:620px;height:620px;border-radius:50%;right:-180px;top:-180px;background:radial-gradient(circle,rgba(89,104,255,.2),transparent 68%);filter:blur(8px);z-index:-1;pointer-events:none}
+    .nav{height:86px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:11px;font-size:12px}.brand b{width:36px;height:36px;border:1px solid #39424e;border-radius:9px;display:grid;place-items:center;color:var(--lime);font-size:10px}.nav nav{display:flex;gap:28px;font-size:10px;color:#858f9b}.cta{justify-self:end;border:1px solid #3a4450;border-radius:8px;padding:11px 14px;font-size:10px}.cta span{color:var(--lime)}
+    .hero{position:relative;padding:72px 0 0}.status{display:inline-flex;align-items:center;gap:9px;border:1px solid #252c35;border-radius:6px;padding:8px 10px;color:#818b98;font-size:9px;letter-spacing:.13em}.status i{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 15px var(--lime)}
+    .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;align-items:center;gap:70px;min-height:690px;padding:20px 0 55px}.eyebrow{font-size:9px;letter-spacing:.18em;color:#6d7784;margin-bottom:20px}.hero h1{font-size:clamp(82px,9.9vw,154px);line-height:.76;letter-spacing:-.075em;margin:0;text-transform:uppercase}.hero h1 .outline{display:block;color:transparent;-webkit-text-stroke:2px var(--ink)}.hero h1 .hit{display:inline-block;color:var(--lime)}.lead{max-width:620px;font-size:17px;line-height:1.6;color:#9aa3ae;margin:34px 0 0}.actions{display:flex;gap:10px;margin-top:32px}.primary,.secondary{padding:14px 17px;border-radius:8px;font-size:11px;font-weight:700}.primary{background:var(--lime);color:#081000}.secondary{border:1px solid #37414c;color:#b8c0ca}
+    .visual{position:relative;min-height:570px;display:grid;place-items:center}.phone{width:280px;height:565px;background:#0b0e13;border:1px solid #414b57;border-radius:36px;padding:10px;position:relative;z-index:3;transform:rotate(4deg);box-shadow:0 36px 100px #0009}.phone-top{height:38px;padding:7px 12px;display:flex;justify-content:space-between;color:#707a87;font-size:8px}.screen{height:calc(100% - 38px);border-radius:25px;position:relative;overflow:hidden;padding:18px;background:linear-gradient(160deg,#28304b,#131822 50%,#0f1318)}.tag{font-size:8px;letter-spacing:.13em;border:1px solid #4d5662;border-radius:999px;padding:6px 8px}.avatar{position:absolute;top:78px;left:50%;transform:translateX(-50%);width:140px;height:140px;border-radius:50%;overflow:hidden;filter:saturate(.45)}.avatar img{width:100%;height:100%;object-fit:cover}.screen-copy{position:absolute;left:20px;right:20px;bottom:38px}.screen-copy small{font-size:7px;letter-spacing:.14em;color:var(--lime)}.screen-copy h2{font-size:23px;line-height:1.05;letter-spacing:-.04em;margin:8px 0 0}.screen-copy h2 span{color:var(--lime)}
+    .poster-note{position:absolute;z-index:4;background:var(--lime);color:#091000;border:2px solid #091000;padding:13px 15px;font-size:10px;font-weight:700;box-shadow:5px 5px 0 #091000;transform:rotate(-5deg);left:-2%;top:17%}.poster-note.blue{background:var(--cyan);left:auto;right:-2%;top:auto;bottom:18%;transform:rotate(5deg)}
+    .ticker{border-top:1px solid #313a45;border-bottom:1px solid #313a45;background:var(--blue);overflow:hidden;white-space:nowrap;color:#fff;padding:13px 0;font-size:11px;font-weight:700;letter-spacing:.1em}.ticker div{width:max-content;animation:ticker 19s linear infinite}@keyframes ticker{to{transform:translateX(-50%)}}
+    .section{padding:110px 0}.head{display:grid;grid-template-columns:1.15fr .85fr;gap:70px;align-items:end;margin-bottom:46px}.head span{font-size:9px;letter-spacing:.16em;color:#687381}.head h2{font-size:clamp(52px,5.6vw,82px);line-height:.88;letter-spacing:-.06em;margin:11px 0 0;text-transform:uppercase}.head h2 b{color:var(--lime)}.head p{color:#7f8996;line-height:1.6;max-width:470px;justify-self:end}
+    .strips{border-top:1px solid #303844}.strip{display:grid;grid-template-columns:70px 1.2fr 1fr 34px;align-items:center;gap:25px;padding:28px 18px;border-bottom:1px solid #303844;transition:.2s}.strip:hover{background:#0f141b}.strip:nth-child(2){background:var(--lime);color:#091000;border-color:#091000}.strip:nth-child(2):hover{background:#b0ff38}.strip:nth-child(4){background:var(--blue);color:#fff;border-color:#303d9a}.strip>span{font-size:9px}.strip small{font-size:8px;letter-spacing:.14em}.strip h3{font-size:28px;letter-spacing:-.035em;margin:6px 0 0}.strip p{font-size:12px;line-height:1.5;margin:0}.strip strong{font-size:26px}
+    .work-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.feature{border:1px solid #2b333d;border-radius:14px;overflow:hidden;background:#0d1117}.feature.large{grid-row:span 2}.art{position:relative;height:390px;padding:20px;overflow:hidden}.large .art{height:660px}.software{background:radial-gradient(circle at 75% 18%,rgba(163,255,18,.12),transparent 22%),linear-gradient(150deg,#1c2a38,#10141a 60%,#0b0e12)}.hooks{background:linear-gradient(145deg,#5968ff,#202544 64%,#0d1016)}.education{background:linear-gradient(145deg,#123e6d,#0d1926 66%,#0d1016)}.art-meta{display:flex;justify-content:space-between;font-size:8px;letter-spacing:.13em;color:#9aa3ae}.mock{position:absolute;left:9%;right:9%;bottom:14%;height:58%;border:1px solid #ffffff24;background:#0b0e13d9;border-radius:12px;padding:16px;display:flex;flex-direction:column}.mock i{height:7px;width:60%;background:#29313b;border-radius:5px;margin-bottom:9px}.mock i:nth-child(2){width:77%}.mock i:nth-child(3){width:42%}.mock strong{font-size:clamp(25px,2.7vw,40px);line-height:1.04;letter-spacing:-.045em;margin-top:auto}.big{position:absolute;left:25px;bottom:25px;font-size:66px;line-height:.82;letter-spacing:-.075em;font-weight:700}.circles{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px}.circles b{width:70px;height:70px;border:1px solid #ffffff42;border-radius:50%;display:grid;place-items:center;font-size:9px}.circles em{font-style:normal;color:var(--lime)}.feature-copy{padding:19px 20px}.feature-copy small{font-size:8px;letter-spacing:.14em;color:#687381}.feature-copy h3{font-size:21px;margin:8px 0 5px}.feature-copy p{font-size:11px;color:#75808c;margin:0}
+    .proof{background:linear-gradient(140deg,#101720,#090c10 70%);border-top:1px solid #2a323b;border-bottom:1px solid #2a323b;padding:115px 0}.proof-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:90px;align-items:center}.proof span{font-size:9px;letter-spacing:.15em;color:#687381}.proof h2{font-size:clamp(58px,6.4vw,96px);line-height:.86;letter-spacing:-.065em;margin:17px 0 34px;text-transform:uppercase}.proof h2 b{color:var(--lime)}.proof p{font-size:15px;line-height:1.68;color:#8b95a1;max-width:680px}.facts{border:1px solid #313a45;border-radius:15px;padding:15px;background:#0a0d12aa}.fact{display:grid;grid-template-columns:45px 1fr;gap:8px;padding:18px 12px;border-bottom:1px solid #28303a}.fact:last-child{border-bottom:0}.fact>span{color:var(--lime)}.fact div{display:flex;justify-content:space-between}.fact b{font-size:13px}.fact small{font-size:10px;color:#687381}
+    .process{padding:110px 0}.steps{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #303844;border-left:1px solid #303844}.steps div{min-height:260px;padding:23px;border-right:1px solid #303844;border-bottom:1px solid #303844;position:relative}.steps span{font-size:9px;color:var(--lime)}.steps h3{font-size:22px;margin-top:65px}.steps p{font-size:11px;line-height:1.55;color:#76808c}.steps div:nth-child(2){background:#111722}.steps div:nth-child(4){background:linear-gradient(150deg,rgba(89,104,255,.22),transparent)}
+    .contact{background:var(--lime);color:#081000;padding:90px 0 34px}.contact-inner{display:flex;justify-content:space-between;align-items:flex-end}.contact small{font-size:9px;letter-spacing:.14em}.contact h2{font-size:clamp(70px,8.7vw,132px);line-height:.79;letter-spacing:-.075em;text-transform:uppercase;margin:28px 0}.contact h2 span{color:var(--blue)}.contact a{width:180px;height:180px;border-radius:50%;background:#081000;color:#fff;display:grid;place-items:center;text-align:center;font-size:11px;font-weight:700;transform:rotate(-5deg)}
+    @media(max-width:960px){.shell{width:min(100% - 30px,1400px)}.nav{grid-template-columns:1fr auto}.nav nav{display:none}.hero-grid{grid-template-columns:1fr}.hero h1{font-size:clamp(74px,18vw,130px)}.visual{min-height:620px}.head{grid-template-columns:1fr}.head p{justify-self:start}.work-grid{grid-template-columns:1fr}.feature.large{grid-row:auto}.large .art{height:560px}.proof-grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr}.strip{grid-template-columns:55px 1fr 30px}.strip p{grid-column:2}.contact-inner{display:block}.contact a{margin-top:42px;width:135px;height:135px}}
+    @media(max-width:580px){.brand span{display:none}.hero h1{font-size:59px;-webkit-text-stroke-width:1px}.visual{min-height:550px}.phone{width:245px;height:500px}.poster-note{font-size:8px}.strips .strip{grid-template-columns:35px 1fr 25px;padding:23px 10px}.strip h3{font-size:21px}.head h2{font-size:46px}.large .art,.art{height:420px}.big{font-size:50px}.circles b{width:58px;height:58px}.proof h2{font-size:49px}.fact div{display:block}.fact small{display:block;margin-top:5px}.steps{grid-template-columns:1fr}.contact h2{font-size:58px}}
+    @media(prefers-reduced-motion:reduce){.ticker div{animation:none}}
+
+    /* Hero: bold-first, tech-second */
+    .hero{background:var(--yellow);color:#101010;margin:0;border-bottom:2px solid #101010;overflow:hidden;width:100%;max-width:none;padding-left:max(28px,calc((100vw - 1400px)/2));padding-right:max(28px,calc((100vw - 1400px)/2))}
+    .hero::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(16,16,16,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(16,16,16,.07) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(to right,#000 0%,rgba(0,0,0,.65) 52%,transparent 82%)}
+    .hero .status{position:relative;z-index:2;color:#101010;border:2px solid #101010;background:#fff;box-shadow:4px 4px 0 #101010;font-weight:700;max-width:100%}.hero .status i{background:var(--blue);box-shadow:none}.hero .eyebrow{color:#101010;font-weight:700;max-width:100%}.hero-grid{position:relative;z-index:1;min-height:720px}
+    .hero h1{color:#101010;font-size:clamp(88px,10.3vw,160px);line-height:.75;letter-spacing:-.08em;max-width:980px}.hero h1 .outline{color:transparent;-webkit-text-stroke:2px #101010}.hero h1 .hit{color:var(--blue);text-shadow:none}.hero .lead{color:#202020;font-weight:500;max-width:660px}.hero .primary{background:#101010;color:#fff;border:2px solid #101010;box-shadow:5px 5px 0 var(--blue)}.hero .secondary{color:#101010;border:2px solid #101010;background:transparent}.hero .visual{min-height:620px}.hero .phone{border:2px solid #101010;box-shadow:10px 12px 0 #101010,0 38px 90px rgba(0,0,0,.22);transform:rotate(4.5deg)}
+    .hero .poster-note{background:#fff;color:#101010;border:2px solid #101010;box-shadow:5px 5px 0 #101010;left:-5%;top:14%;font-size:11px}.hero .poster-note.blue{background:var(--cyan);color:#101010;right:-4%;left:auto;top:auto;bottom:16%}
+    .hero-fit{position:relative;z-index:2;display:flex;gap:32px;align-items:center;overflow:auto;white-space:nowrap;border-top:2px solid #101010;padding:17px 0 18px;font-size:9px;letter-spacing:.13em}.hero-fit span{font-weight:700;color:var(--blue)}.hero-fit b{font-weight:700}
+    @media(max-width:960px){.hero{padding-left:28px;padding-right:28px}.hero h1{font-size:clamp(74px,18vw,132px)}.hero .visual{min-height:610px}}
+    @media(max-width:580px){.hero{padding-left:20px;padding-right:20px;padding-top:42px}.hero .status{font-size:7px;letter-spacing:.11em;padding:7px 8px;box-shadow:3px 3px 0 #101010;white-space:nowrap}.hero .eyebrow{font-size:7px;line-height:1.45;letter-spacing:.14em}.hero h1{font-size:clamp(44px,17vw,52px);line-height:.8;letter-spacing:-.065em;margin-top:18px}.hero .lead{max-width:100%;font-size:14px;line-height:1.55}.hero .actions{width:100%}.hero .primary,.hero .secondary{padding:13px 14px;font-size:9px}.hero .visual{width:100%;min-height:520px}.hero .poster-note{left:0;top:12%;font-size:8px}.hero .poster-note.blue{right:0;bottom:13%}.hero-fit{gap:22px;font-size:8px}}
+  </style>
 </head>
 <body>
-  <div class="page-grid" aria-hidden="true"></div>
+  <div class="grid"></div><div class="glow"></div>
 
-  <header class="nav">
-    <div class="shell nav-inner">
-      <a class="brand" href="#top" aria-label="Tyler Thibault home">
-        <span class="brand-mark">TT</span>
-        <span class="brand-copy">Tyler Thibault <small>UGC CREATOR</small></span>
-      </a>
-      <nav class="desktop-nav" aria-label="Primary navigation">
-        <a href="#work">Work</a>
-        <a href="#services">What I make</a>
-        <a href="#about">Why me</a>
-        <a href="#process">Process</a>
-      </nav>
-      <a class="nav-cta" href="#contact">Work with me <span>↗</span></a>
-    </div>
+  <header class="nav shell">
+    <a class="brand" href="/"><b>TT</b><span>Tyler Thibault</span></a>
+    <nav><a href="#services">What I make</a><a href="#work">Work</a><a href="#about">Why me</a><a href="#contact">Contact</a></nav>
+    <a class="cta" href="#contact">WORK WITH ME <span>↗</span></a>
   </header>
 
   <main>
-    <section class="hero shell" id="top">
-      <div class="status reveal">
-        <span class="status-light"></span>
-        AVAILABLE FOR UGC PROJECTS
-      </div>
-
+    <section class="hero shell">
+      <div class="status"><i></i> AVAILABLE FOR UGC PROJECTS</div>
       <div class="hero-grid">
-        <div class="hero-copy reveal">
+        <div>
           <p class="eyebrow">CREATOR × BUILDER × PRODUCT STORYTELLER</p>
-          <h1>I make product content people <span>actually watch.</span></h1>
-          <p class="hero-lead">UGC, demos, and short-form content for tech, AI, software, creator tools, and useful products that need more than someone reading a script.</p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="#work">See my work <span>↘</span></a>
-            <a class="button button-secondary" href="#contact">Work with me</a>
-          </div>
+          <h1>I make product<br>content people<br><span class="outline">don’t instantly</span> <span class="hit">skip.</span></h1>
+          <p class="lead">UGC, demos, and short-form product content with bold creator energy up front — backed by the technical clarity to actually explain what the product does.</p>
+          <div class="actions"><a class="primary" href="#work">SEE MY WORK ↘</a><a class="secondary" href="#services">WHAT I MAKE</a></div>
         </div>
-
-        <div class="hero-visual reveal" aria-label="Creator video concept preview">
-          <div class="orb"></div>
+        <div class="visual">
+          <div class="poster-note">REAL HUMAN<br>ENERGY ↗</div>
+          <div class="poster-note blue">TECH THAT<br>MAKES SENSE</div>
           <div class="phone">
-            <div class="phone-bar">
-              <span>9:41</span>
-              <span class="phone-island"></span>
-              <span>● ● ●</span>
-            </div>
-            <div class="phone-screen">
-              <div class="screen-top">
-                <span>TECH UGC</span>
-                <span>00:37</span>
-              </div>
-              <div class="creator-frame">
-                <img src="https://avatars.githubusercontent.com/u/16256497?v=4" alt="Tyler Thibault" />
-                <span class="record-dot"></span>
-              </div>
-              <div class="phone-message">
-                <span class="micro-label">THE POINT</span>
-                <h2>Your demo should answer <em>“why do I care?”</em> fast.</h2>
-              </div>
-              <div class="audio-wave" aria-hidden="true">
-                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-              </div>
+            <div class="phone-top"><span>9:41</span><span>● ● ●</span></div>
+            <div class="screen">
+              <span class="tag">TECH UGC</span>
+              <div class="avatar"><img src="https://avatars.githubusercontent.com/u/16256497?v=4" alt="Tyler Thibault"></div>
+              <div class="screen-copy"><small>THE POINT</small><h2>Your product has a feature. <span>I find the reason people care.</span></h2></div>
             </div>
           </div>
-          <div class="data-chip chip-one"><span>HOOK OPTIONS</span><b>3–5 / SHOOT</b></div>
-          <div class="data-chip chip-two"><span>FORMAT</span><b>9:16 NATIVE</b></div>
-          <div class="data-chip chip-three"><span>BEST FIT</span><b>TECH + AI</b></div>
         </div>
       </div>
-
-      <div class="fit-strip reveal">
-        <span>BEST FIT</span>
-        <b>AI TOOLS</b>
-        <b>APPS + SAAS</b>
-        <b>CREATOR TECH</b>
-        <b>CONSUMER PRODUCTS</b>
-      </div>
+      <div class="hero-fit"><span>BEST FIT</span><b>AI TOOLS</b><b>APPS + SAAS</b><b>CREATOR TECH</b><b>USEFUL PRODUCTS</b></div>
     </section>
+
+    <div class="ticker"><div>HOOKS THAT HIT ✦ PRODUCT PROOF ✦ CREATOR ENERGY ✦ TECH THAT MAKES SENSE ✦ HOOKS THAT HIT ✦ PRODUCT PROOF ✦ CREATOR ENERGY ✦ TECH THAT MAKES SENSE ✦</div></div>
 
     <section class="section shell" id="services">
-      <div class="section-heading reveal">
-        <div>
-          <span class="section-index">01 / WHAT I MAKE</span>
-          <h2>Not just a talking head.</h2>
-        </div>
-        <p>I build the idea around the product first — then use the camera, screen recording, editing, and hook variations to make it land.</p>
-      </div>
-
-      <div class="service-grid">
-        <article class="service-card reveal">
-          <div class="service-top"><span>01</span><span class="service-tag">PAID + ORGANIC</span></div>
-          <div class="service-icon">↗</div>
-          <h3>UGC ads</h3>
-          <p>Problem-aware hooks, natural creator delivery, product proof, and a CTA that doesn’t sound stapled on.</p>
-        </article>
-
-        <article class="service-card reveal">
-          <div class="service-top"><span>02</span><span class="service-tag">TECH / SAAS / AI</span></div>
-          <div class="service-icon">⌘</div>
-          <h3>Product demos</h3>
-          <p>On-camera context plus screen capture so the viewer can understand what the product actually does.</p>
-        </article>
-
-        <article class="service-card reveal">
-          <div class="service-top"><span>03</span><span class="service-tag">BRAND SOCIAL</span></div>
-          <div class="service-icon">▶</div>
-          <h3>Organic short-form</h3>
-          <p>Educational, story-driven, or creator-POV content designed to be useful enough to keep watching.</p>
-        </article>
-
-        <article class="service-card reveal accent-card">
-          <div class="service-top"><span>04</span><span class="service-tag">PERFORMANCE</span></div>
-          <div class="service-icon">3×</div>
-          <h3>Hook variations</h3>
-          <p>Don’t bet the whole shoot on one opening. Film multiple angles while everything is already set up.</p>
-        </article>
+      <div class="head"><div><span>01 / WHAT I MAKE</span><h2>Tech brain.<br><b>Creator energy.</b></h2></div><p>Enough structure to explain a real product. Enough personality that it still belongs on TikTok, Reels, or a paid social feed.</p></div>
+      <div class="strips">
+        <article class="strip"><span>01</span><div><small>UGC ADS</small><h3>Make the problem feel immediate.</h3></div><p>Strong hooks, real product use, proof, and a CTA that feels native.</p><strong>↗</strong></article>
+        <article class="strip"><span>02</span><div><small>APP / SOFTWARE DEMOS</small><h3>Make the feature feel obvious.</h3></div><p>On-camera context plus screen proof for tech, AI, apps, and SaaS.</p><strong>↗</strong></article>
+        <article class="strip"><span>03</span><div><small>ORGANIC SHORT-FORM</small><h3>Useful enough to save.</h3></div><p>Education, experiments, creator POV, and actual payoff.</p><strong>↗</strong></article>
+        <article class="strip"><span>04</span><div><small>HOOK VARIATIONS</small><h3>Don’t gamble on one opening.</h3></div><p>Multiple emotional angles filmed while the setup is already live.</p><strong>↗</strong></article>
       </div>
     </section>
 
-    <section class="section work-section shell" id="work">
-      <div class="section-heading reveal">
-        <div>
-          <span class="section-index">02 / SELECTED FORMATS</span>
-          <h2>Built for the feed.</h2>
-        </div>
-        <p>The portfolio is being built out now. These are the content formats the final reel will showcase.</p>
-      </div>
-
+    <section class="section shell" id="work">
+      <div class="head"><div><span>02 / SELECTED FORMATS</span><h2>Built to <b>move.</b></h2></div><p>Portfolio placeholders for now. The final version will swap these concepts for your real vertical videos and thumbnails.</p></div>
       <div class="work-grid">
-        <article class="work-card work-card-large reveal">
-          <div class="work-visual visual-software">
-            <div class="work-meta"><span>01 / SOFTWARE STORY</span><span>UGC DEMO</span></div>
-            <div class="demo-window">
-              <div class="window-bar"><i></i><i></i><i></i></div>
-              <div class="window-lines"><span></span><span></span><span></span></div>
-              <strong>“I built this because the normal way was annoying.”</strong>
-            </div>
-            <div class="play-pill">PLAY CONCEPT <span>▶</span></div>
-          </div>
-          <div class="work-copy">
-            <div><span>Founder-style UGC</span><h3>Make the software feel human.</h3></div>
-            <p>Start with the reason a person would care, then show the feature as proof.</p>
-          </div>
-        </article>
-
-        <article class="work-card reveal">
-          <div class="work-visual visual-hooks">
-            <div class="work-meta"><span>02 / HOOK MATRIX</span><span>PERFORMANCE</span></div>
-            <div class="hook-stack">
-              <span>“You’re doing this the hard way.”</span>
-              <span>“I wish I knew this sooner.”</span>
-              <span>“This feature is the whole reason.”</span>
-            </div>
-            <div class="play-pill">3 OPENINGS <span>↗</span></div>
-          </div>
-          <div class="work-copy">
-            <div><span>Creative testing</span><h3>Same product. Better angles.</h3></div>
-            <p>Build several openings around different viewer motivations.</p>
-          </div>
-        </article>
-
-        <article class="work-card reveal">
-          <div class="work-visual visual-education">
-            <div class="work-meta"><span>03 / EDUCATION</span><span>ORGANIC</span></div>
-            <div class="chain">
-              <i>HOOK</i><b>→</b><i>IDEA</i><b>→</b><i>PAYOFF</i>
-            </div>
-            <div class="play-pill">SAVE-WORTHY <span>↓</span></div>
-          </div>
-          <div class="work-copy">
-            <div><span>Educational social</span><h3>Teach something that sticks.</h3></div>
-            <p>A clear idea, a reason to keep watching, and a payoff worth remembering.</p>
-          </div>
-        </article>
+        <article class="feature large"><div class="art software"><div class="art-meta"><span>01 / SOFTWARE STORY</span><span>UGC DEMO</span></div><div class="mock"><i></i><i></i><i></i><strong>“I built this because the normal way was annoying.”</strong></div></div><div class="feature-copy"><small>FOUNDER-STYLE UGC</small><h3>Make the software feel human.</h3><p>Context first. Feature second. Proof where it matters.</p></div></article>
+        <article class="feature"><div class="art hooks"><div class="art-meta"><span>02 / PERFORMANCE</span><span>HOOK MATRIX</span></div><div class="big">STOP<br>SCROLLING.</div></div><div class="feature-copy"><small>CREATIVE TESTING</small><h3>Same product. Better angles.</h3><p>Several openings around different viewer motivations.</p></div></article>
+        <article class="feature"><div class="art education"><div class="art-meta"><span>03 / ORGANIC</span><span>EDUCATION</span></div><div class="circles"><b>HOOK</b><em>→</em><b>IDEA</b><em>→</em><b>PAYOFF</b></div></div><div class="feature-copy"><small>EDUCATIONAL SOCIAL</small><h3>Teach something that sticks.</h3><p>A clear idea with a reason to stay for the payoff.</p></div></article>
       </div>
     </section>
 
-    <section class="why-section" id="about">
-      <div class="shell why-grid">
-        <div class="why-copy reveal">
-          <span class="section-index">03 / WHY TYLER</span>
-          <h2>I don’t just hold the product. <span>I figure out why it matters.</span></h2>
-          <p>I’m a creator, but I’m also a builder. I spend a lot of time around software, AI, creator tools, workflows, and learning systems. That means technical products don’t scare me — they give me more to work with.</p>
-          <p>I care about the part before editing too: the hook, the order of information, the proof, and the moment the viewer understands the point.</p>
-          <a class="text-link" href="#contact">Tell me what you’re building <span>↗</span></a>
-        </div>
-
-        <div class="why-panel reveal">
-          <div class="why-profile">
-            <img src="https://avatars.githubusercontent.com/u/16256497?v=4" alt="Tyler Thibault" />
-            <div>
-              <strong>TYLER THIBAULT</strong>
-              <span>CREATOR / BUILDER</span>
-            </div>
-          </div>
-          <div class="why-stat">
-            <span>01</span>
-            <div><b>Short-form first</b><small>Hooks, pacing, retention</small></div>
-          </div>
-          <div class="why-stat">
-            <span>02</span>
-            <div><b>Technical fluency</b><small>Apps, AI, software, workflows</small></div>
-          </div>
-          <div class="why-stat">
-            <span>03</span>
-            <div><b>Flexible deliverables</b><small>Edited finals, variants, raw footage</small></div>
-          </div>
-          <div class="why-stat">
-            <span>04</span>
-            <div><b>Real point of view</b><small>Not just feature-list narration</small></div>
-          </div>
-        </div>
+    <section class="proof" id="about">
+      <div class="shell proof-grid">
+        <div><span>03 / WHY TYLER</span><h2>I figure out <b>why it matters.</b></h2><p>I’m a creator, but I’m also a builder. I work around software, AI, creator tools, workflows, and learning systems, so I can understand the product before I start performing a script about it.</p><p>The advantage is simple: technical nuance becomes something useful on camera instead of something that gets edited out.</p></div>
+        <div class="facts"><div class="fact"><span>01</span><div><b>Short-form first</b><small>Hooks, pacing, retention</small></div></div><div class="fact"><span>02</span><div><b>Technical fluency</b><small>Apps, AI, software, workflows</small></div></div><div class="fact"><span>03</span><div><b>Flexible output</b><small>Edited finals, variants, raw</small></div></div><div class="fact"><span>04</span><div><b>Actual point of view</b><small>Not feature-list narration</small></div></div></div>
       </div>
     </section>
 
-    <section class="section shell" id="process">
-      <div class="section-heading reveal">
-        <div>
-          <span class="section-index">04 / PROCESS</span>
-          <h2>Brief to deliverables. No mystery.</h2>
-        </div>
-        <p>Simple enough to move quickly, structured enough that we’re not guessing once the camera turns on.</p>
-      </div>
-
-      <div class="process-grid">
-        <article class="process-step reveal">
-          <span>01</span>
-          <div class="process-line"></div>
-          <h3>You send the brief.</h3>
-          <p>Product, audience, goals, must-says, examples, and what you already know isn’t working.</p>
-        </article>
-        <article class="process-step reveal">
-          <span>02</span>
-          <div class="process-line"></div>
-          <h3>I find the angles.</h3>
-          <p>Hooks, story beats, demo moments, proof points, and useful variations.</p>
-        </article>
-        <article class="process-step reveal">
-          <span>03</span>
-          <div class="process-line"></div>
-          <h3>I shoot + edit.</h3>
-          <p>Direct-to-camera, product use, screen capture, captions, pacing, and 9:16 delivery.</p>
-        </article>
-        <article class="process-step reveal">
-          <span>04</span>
-          <div class="process-line"></div>
-          <h3>You get options.</h3>
-          <p>Final videos, alternate hooks, cutdowns, and raw footage depending on the scope.</p>
-        </article>
-      </div>
+    <section class="process shell">
+      <div class="head"><div><span>04 / PROCESS</span><h2>Brief to final.<br><b>No mystery.</b></h2></div><p>Fast enough to keep momentum. Structured enough that we know what we’re testing before the camera turns on.</p></div>
+      <div class="steps"><div><span>01</span><h3>You send the brief.</h3><p>Product, audience, goals, must-says, references.</p></div><div><span>02</span><h3>I find the angles.</h3><p>Hooks, story beats, demo moments, proof points.</p></div><div><span>03</span><h3>I shoot + edit.</h3><p>Direct-to-camera, product use, screen capture, captions.</p></div><div><span>04</span><h3>You get options.</h3><p>Finals, alternate hooks, cutdowns, and raw footage.</p></div></div>
     </section>
 
-    <section class="contact shell" id="contact">
-      <div class="contact-card reveal">
-        <div class="contact-label"><span class="status-light"></span> READY WHEN YOU ARE</div>
-        <h2>Give me the product.<br><span>I’ll find the story.</span></h2>
-        <p>Send over what you’re building, who it’s for, and what you need the content to accomplish.</p>
-        <a class="contact-email" href="mailto:hello@thibaultsolutions.com">hello@thibaultsolutions.com <span>↗</span></a>
-        <div class="contact-tags">
-          <span>UGC ADS</span>
-          <span>PRODUCT DEMOS</span>
-          <span>ORGANIC SOCIAL</span>
-          <span>HOOK VARIATIONS</span>
-        </div>
-      </div>
-    </section>
+    <footer class="contact" id="contact">
+      <div class="shell contact-inner"><div><small>READY WHEN YOU ARE</small><h2>Give me<br>the product.<br><span>I’ll find the story.</span></h2></div><a href="mailto:hello@thibaultsolutions.com">EMAIL<br>TYLER ↗</a></div>
+    </footer>
   </main>
-
-  <footer class="footer shell">
-    <div class="brand footer-brand">
-      <span class="brand-mark">TT</span>
-      <span class="brand-copy">Tyler Thibault <small>UGC CREATOR</small></span>
-    </div>
-    <span>© 2026 THIBAULT SOLUTIONS</span>
-    <a href="#top">BACK TO TOP ↑</a>
-  </footer>
-
-  <script src="site-20260920.js"></script>
 </body>
 </html>
