@@ -1,0 +1,39 @@
+name: Creative Circle CI
+on:
+  push:
+    branches: [main, "creative-circle/**"]
+  pull_request:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: creative_circle
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/creative_circle
+      APP_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
+      OWNER_EMAIL: owner@example.test
+      OWNER_PASSWORD: ci-owner-password-12345
+      MEDIA_STORAGE_PATH: /tmp/creative-circle-data
+      MAX_UPLOAD_SIZE: 104857600
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: npm install
+      - run: npm run db:migrate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:effects
+      - run: npm run build
+      - run: docker build -t creative-circle:test .
