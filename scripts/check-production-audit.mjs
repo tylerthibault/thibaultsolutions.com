@@ -1,19 +1,18 @@
 import { readFile } from "node:fs/promises";
 
-const [auditPath, treePath] = process.argv.slice(2);
-if (!auditPath || !treePath) throw new Error("Usage: node scripts/check-production-audit.mjs <audit.json> <prod-tree.json>");
+const [auditPath, lockPath] = process.argv.slice(2);
+if (!auditPath || !lockPath) throw new Error("Usage: node scripts/check-production-audit.mjs <audit.json> <package-lock.json>");
 
 const audit = JSON.parse(await readFile(auditPath, "utf8"));
-const tree = JSON.parse(await readFile(treePath, "utf8"));
+const lock = JSON.parse(await readFile(lockPath, "utf8"));
 const productionPackages = new Set();
 
-function walk(node) {
-  for (const [name, child] of Object.entries(node?.dependencies ?? {})) {
-    productionPackages.add(name);
-    walk(child);
-  }
+for (const [location, metadata] of Object.entries(lock.packages ?? {})) {
+  if (!location || !location.includes("node_modules/")) continue;
+  if (metadata?.dev || metadata?.devOptional) continue;
+  const name = location.split("node_modules/").pop();
+  if (name) productionPackages.add(name);
 }
-walk(tree);
 
 const rank = { low: 1, moderate: 2, high: 3, critical: 4 };
 const findings = Object.entries(audit.vulnerabilities ?? {})
@@ -35,10 +34,10 @@ const findings = Object.entries(audit.vulnerabilities ?? {})
   .sort((a, b) => (rank[b.severity] ?? 0) - (rank[a.severity] ?? 0));
 
 if (findings.length) {
-  console.log("Production-reachable audit findings:");
+  console.log("Production dependency audit findings:");
   console.log(JSON.stringify(findings, null, 2));
 } else {
-  console.log("No production-reachable npm audit findings.");
+  console.log("No production dependency audit findings.");
 }
 
 const blocking = findings.filter((item) => (rank[item.severity] ?? 0) >= rank.high);
