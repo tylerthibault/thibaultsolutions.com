@@ -130,9 +130,11 @@ for (let i = 0; i < 90; i++) {
 }
 if (!exportRow) throw new Error("Render did not complete within 90 seconds");
 
-const downloaded = await api(`/api/exports/${exportRow.id}`, {}, cookie);
-if (!downloaded.response.ok) throw new Error(`Export download failed: ${downloaded.response.status}`);
-const bytes = Buffer.from(await downloaded.response.arrayBuffer());
+const exportResponse = await fetch(`${base}/api/exports/${exportRow.id}`, {
+  headers: { "Origin": base, "Cookie": cookie }
+});
+if (!exportResponse.ok) throw new Error(`Export download failed: ${exportResponse.status}`);
+const bytes = Buffer.from(await exportResponse.arrayBuffer());
 if (bytes.length < 1000) throw new Error("Rendered export was unexpectedly small");
 const output = "/tmp/creative-circle-e2e-output.mp4";
 await writeFile(output, bytes);
