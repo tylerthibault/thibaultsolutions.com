@@ -4,7 +4,8 @@ import { spawn } from "node:child_process";
 const base = process.env.APP_URL ?? "http://localhost:3000";
 const email = process.env.OWNER_EMAIL;
 const password = process.env.OWNER_PASSWORD;
-if (!email || !password) throw new Error("OWNER_EMAIL and OWNER_PASSWORD are required");
+const signupPin = process.env.CREATIVE_CIRCLE_SIGNUP_PIN;
+if (!email || !password || !signupPin) throw new Error("OWNER_EMAIL, OWNER_PASSWORD, and CREATIVE_CIRCLE_SIGNUP_PIN are required");
 
 function run(cmd, args) {
   return new Promise((resolve, reject) => {
@@ -51,6 +52,41 @@ await waitForServer();
 
 const unauth = await api("/api/projects");
 if (unauth.response.status !== 401) throw new Error(`Expected unauthenticated projects request to be 401, got ${unauth.response.status}`);
+
+const signupEmail = `signup-${Date.now()}@example.test`;
+const badSignup = await api("/api/creative-circle/signup", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    name: "CI Signup User",
+    email: signupEmail,
+    password: "ci-signup-password-12345",
+    pin: signupPin + "-wrong"
+  })
+});
+if (badSignup.response.status !== 403) throw new Error(`Expected bad signup PIN to be 403, got ${badSignup.response.status}`);
+
+const goodSignup = await api("/api/creative-circle/signup", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    name: "CI Signup User",
+    email: signupEmail,
+    password: "ci-signup-password-12345",
+    pin: signupPin
+  })
+});
+if (goodSignup.response.status !== 201) throw new Error(`PIN-gated signup failed: ${goodSignup.response.status} ${goodSignup.text}`);
+
+const signupLogin = await api("/api/auth/sign-in/email", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email: signupEmail, password: "ci-signup-password-12345" })
+});
+if (!signupLogin.response.ok) throw new Error(`Newly registered user could not sign in: ${signupLogin.response.status} ${signupLogin.text}`);
+const signupCookie = cookiesFrom(signupLogin.response);
+const signupProjects = await api("/api/projects", {}, signupCookie);
+if (!signupProjects.response.ok) throw new Error(`Newly registered user could not access authenticated projects API: ${signupProjects.response.status}`);
 
 const login = await api("/api/auth/sign-in/email", {
   method: "POST",
@@ -154,5 +190,6 @@ console.log(JSON.stringify({
   source: "360x640 H.264/AAC",
   output: `${exportRow.resolution} H.264/AAC`,
   bytes: bytes.length,
-  effects: stack.map((effect) => effect.effectId)
+  effects: stack.map((effect) => effect.effectId),
+  pinSignup: true
 }));
