@@ -1,0 +1,44 @@
+{
+  "name": "thibaultsolutions-creative-circle",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "next dev",
+    "prebuild": "node scripts/copy-legacy.mjs",
+    "build": "next build && tsc -p tsconfig.worker.json",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
+    "worker": "node dist-worker/scripts/worker.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed-owner": "node dist-worker/scripts/seed-owner.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:effects": "node --experimental-strip-types scripts/smoke-effects.ts"
+  },
+  "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.5",
+    "better-auth": "1.7.5",
+    "drizzle-orm": "0.45.3",
+    "next": "16.3.6",
+    "pg": "8.16.3",
+    "pg-boss": "12.34.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.1.11"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.1",
+    "@types/node": "24.5.2",
+    "@types/pg": "8.15.5",
+    "@types/react": "19.1.16",
+    "@types/react-dom": "19.1.9",
+    "drizzle-kit": "0.31.4",
+    "eslint": "9.36.0",
+    "eslint-config-next": "16.3.6",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}
