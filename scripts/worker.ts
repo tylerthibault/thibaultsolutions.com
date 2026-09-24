@@ -15,7 +15,7 @@ const QUEUE="creative-circle-render"; await boss.createQueue(QUEUE).catch(()=>un
 const even=(n:number)=>Math.max(2,Math.round(n/2)*2);
 function dimensions(w:number,h:number,res:string){if(res==="source") return [even(w),even(h)] as const; const target=res==="1080p"?1080:720; if(h>=w){const nw=Math.min(w,target); return [even(nw),even(h*(nw/w))] as const;} const nh=Math.min(h,target); return [even(w*(nh/h)),even(nh)] as const;}
 function runFfmpeg(args:string[],durationMs:number,onProgress:(p:number)=>void){return new Promise<void>((resolve,reject)=>{const proc=spawn(ffmpeg,args,{stdio:["ignore","pipe","pipe"]});let progressBuf="",err=""; proc.stdout.on("data",d=>{progressBuf+=d.toString();const lines=progressBuf.split(/\r?\n/);progressBuf=lines.pop()??"";for(const line of lines){const [k,v]=line.split("=");if(k==="out_time_us"){const ms=Number(v)/1000;if(Number.isFinite(ms))onProgress(Math.min(98,Math.floor(ms/durationMs*100)));}}});proc.stderr.on("data",d=>{err+=d.toString();if(err.length>12000)err=err.slice(-12000)});proc.on("error",reject);proc.on("close",code=>code===0?resolve():reject(new Error(err.slice(-4000)||`ffmpeg exited ${code}`)));});}
-await boss.work(QUEUE,{teamSize:1,teamConcurrency:1},async ([job])=>{
+await boss.work(QUEUE,async ([job])=>{
   const renderJobId=String((job.data as {renderJobId:string}).renderJobId); const started=new Date();
   const [render]=await db.select().from(renderJobs).where(eq(renderJobs.id,renderJobId)).limit(1); if(!render) throw new Error("Render job missing");
   try{
