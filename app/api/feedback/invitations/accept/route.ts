@@ -26,12 +26,13 @@ export async function POST(request: Request) {
   if (invite.expiresAt.getTime() < Date.now()) return NextResponse.json({ error: "This invitation has expired." }, { status: 410 });
 
   const sessionUser = await apiUser(request);
-  let member = sessionUser;
+  let memberId: string;
 
   if (sessionUser) {
     if (sessionUser.email.toLowerCase() !== invite.email.toLowerCase()) {
       return NextResponse.json({ error: `This invitation is for ${invite.email}.` }, { status: 403 });
     }
+    memberId = sessionUser.id;
   } else {
     const [existing] = await db.select().from(users).where(eq(users.email, invite.email)).limit(1);
     if (existing) {
@@ -49,10 +50,10 @@ export async function POST(request: Request) {
     }
     const [created] = await db.select().from(users).where(eq(users.email, invite.email)).limit(1);
     if (!created) return NextResponse.json({ error: "Account creation did not complete." }, { status: 500 });
-    member = created;
+    memberId = created.id;
   }
 
-  await db.insert(circleMemberships).values({ ownerId: invite.ownerId, memberUserId: member.id }).onConflictDoNothing();
+  await db.insert(circleMemberships).values({ ownerId: invite.ownerId, memberUserId: memberId }).onConflictDoNothing();
   await db.update(circleInvitations).set({ acceptedAt: new Date() }).where(eq(circleInvitations.id, invite.id));
   return NextResponse.json({ ok: true, email: invite.email });
 }
