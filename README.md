@@ -4,7 +4,7 @@ Tyler Thibault's creator / builder website plus the private **Creative Circle** 
 
 ## Production architecture
 
-The site now runs as a Next.js application built and deployed with Docker on Coolify.
+The site now runs behind a Next.js application built and deployed with Docker on Coolify. The public root still serves the preserved existing homepage source; Next powers Creative Circle and the application APIs.
 
 The public homepage preserves the **Bold-Tech Mashup** direction documented in `STYLE_GUIDE.md`: **Bold first. Tech underneath.**
 
@@ -46,7 +46,7 @@ Core runtime:
 ## Development
 
 ```bash
-npm install
+npm ci
 npm run db:migrate
 npm run db:seed-owner
 npm run dev
@@ -67,7 +67,10 @@ npm run lint
 npm test
 npm run test:effects
 npm run build
+# CI additionally boots web + worker and runs the authenticated render E2E test
 docker build -t creative-circle .
 ```
+
+Health check: `GET /api/health` verifies PostgreSQL access and the persistent media directories without exposing owner data.
 
 Do not commit real secrets or owner credentials.
