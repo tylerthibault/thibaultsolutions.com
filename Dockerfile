@@ -1,12 +1,12 @@
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
 RUN APP_URL=http://localhost:3000 BETTER_AUTH_SECRET=cc_build_only_7f4c2d8b93a151de66e0045f npm run build
 
