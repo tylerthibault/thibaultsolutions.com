@@ -6,7 +6,8 @@ Creative Circle is the private video-processing application integrated into Thib
 
 - Next.js 16 App Router + React + strict TypeScript
 - PostgreSQL + Drizzle ORM
-- Better Auth email/password authentication with public signup disabled
+- Better Auth email/password authentication with the default public signup endpoint disabled
+- PIN-gated account creation through `/creative-circle/signup`
 - pg-boss using the same PostgreSQL instance for persistent render jobs
 - FFprobe for media validation/metadata, FFmpeg for thumbnails and final H.264/AAC MP4 output
 - Local persistent media abstraction rooted at `MEDIA_STORAGE_PATH` (`/data` in Coolify)
@@ -22,12 +23,13 @@ Copy `.env.example` and configure:
 - `DATABASE_URL` — PostgreSQL connection string shared by web and worker
 - `APP_URL` — canonical origin, normally `https://thibaultsolutions.com`
 - `BETTER_AUTH_SECRET` — long random secret
+- `CREATIVE_CIRCLE_SIGNUP_PIN` — private access PIN required to create an account through the Creative Circle signup page
 - `OWNER_EMAIL` / `OWNER_PASSWORD` — used by the explicit owner seed command
 - `MEDIA_STORAGE_PATH=/data`
 - `MAX_UPLOAD_SIZE` — bytes; defaults to 2 GiB in application code
 - `FFMPEG_PATH` / `FFPROBE_PATH` — normally the defaults installed in the container
 
-Never commit the real secret or owner password.
+Never commit the real auth secret, signup PIN, or owner password. Treat the signup PIN as an access credential; use a value that is not easy to guess.
 
 ## First deployment / Coolify
 
@@ -50,7 +52,7 @@ The worker and web process can scale separately later, but V1 requires only one 
 
 ## Storage and security
 
-Uploaded names are metadata only. Files receive server-generated UUID keys, are written under controlled directories, and never become shell command fragments. FFmpeg/FFprobe are invoked through `spawn()` argument arrays. Upload MIME, extension, size, and actual media validity are checked before a project accepts the asset. Source and rendered media endpoints require the authenticated owner.
+Uploaded names are metadata only. Files receive server-generated UUID keys, are written under controlled directories, and never become shell command fragments. FFmpeg/FFprobe are invoked through `spawn()` argument arrays. Upload MIME, extension, size, and actual media validity are checked before a project accepts the asset. Source and rendered media endpoints require an authenticated Creative Circle account. The default Better Auth signup endpoint remains disabled; account creation is only exposed through the PIN-gated Creative Circle signup route. Incorrect signup PIN attempts are rate-limited per web-process client key.
 
 ## Effects
 
