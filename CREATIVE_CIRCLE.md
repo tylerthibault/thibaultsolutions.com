@@ -13,7 +13,7 @@ Creative Circle is the private video-processing application integrated into Thib
 - Browser canvas preview using the same effect IDs, seeds, and parameter object used by server export
 - Separate web and worker processes built from the same Docker image
 
-The original static `/store`, `/tech`, `/bold`, and `/mashup` directories stay in source control. `scripts/copy-legacy.mjs` copies them into Next's public directory before production builds and Next rewrites their original URLs to their preserved HTML.
+The existing homepage `index.html` plus the static `/store`, `/tech`, `/bold`, and `/mashup` directories stay in source control. `scripts/copy-legacy.mjs` copies them into Next's public output before production builds. A before-files rewrite serves the preserved homepage at `/`, while the legacy section URLs keep their original HTML. The only intentional homepage change is a navigation entry for Creative Circle.
 
 ## Required environment
 
@@ -65,7 +65,7 @@ npm run test:effects
 ## Validation commands
 
 ```bash
-npm install
+npm ci
 npm run db:migrate
 npm run typecheck
 npm run lint
@@ -75,4 +75,6 @@ npm run build
 docker build -t creative-circle .
 ```
 
-CI runs the same validation against PostgreSQL 17 and an installed FFmpeg binary.
+CI runs the same validation against PostgreSQL 17 and an installed FFmpeg binary. It also filters npm audit findings against the actual production dependency tree, seeds the owner account, boots the built Next server plus pg-boss worker, authenticates through Better Auth, uploads a real portrait H.264/AAC fixture, saves two effects, renders a 720p MP4, downloads it, verifies H.264/AAC with FFprobe, and deletes the export.
+
+`GET /api/health` is available for Coolify health checks. It verifies database access and persistent media directory availability without returning private project data.
