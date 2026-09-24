@@ -110,4 +110,69 @@ export const exportsTable = pgTable("exports", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("export_render_unique").on(t.renderJobId), index("export_project_idx").on(t.projectId)]);
 
-export const schema = { user, session, account, verification, mediaAssets, projects, renderJobs, exportsTable };
+
+export const circleMemberships = pgTable("circle_memberships", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  memberUserId: text("member_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("circle_member_unique").on(t.ownerId, t.memberUserId),
+  index("circle_member_owner_idx").on(t.ownerId),
+  index("circle_member_user_idx").on(t.memberUserId),
+]);
+
+export const circleInvitations = pgTable("circle_invitations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("circle_invite_owner_email_unique").on(t.ownerId, t.email),
+  index("circle_invite_owner_idx").on(t.ownerId),
+]);
+
+export const feedbackVideos = pgTable("feedback_videos", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  sourceType: text("source_type").notNull(),
+  assetId: uuid("asset_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+  sourceUrl: text("source_url"),
+  provider: text("provider"),
+  durationMs: integer("duration_ms"),
+  status: text("status").notNull().default("open"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("feedback_video_owner_idx").on(t.ownerId, t.updatedAt),
+]);
+
+export const feedbackAssignments = pgTable("feedback_assignments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  videoId: uuid("video_id").notNull().references(() => feedbackVideos.id, { onDelete: "cascade" }),
+  reviewerUserId: text("reviewer_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  seenAt: timestamp("seen_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("feedback_assignment_unique").on(t.videoId, t.reviewerUserId),
+  index("feedback_assignment_reviewer_idx").on(t.reviewerUserId, t.createdAt),
+]);
+
+export const feedbackComments = pgTable("feedback_comments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  videoId: uuid("video_id").notNull().references(() => feedbackVideos.id, { onDelete: "cascade" }),
+  authorId: text("author_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  timestampMs: integer("timestamp_ms"),
+  body: text("body").notNull(),
+  resolved: boolean("resolved").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("feedback_comment_video_idx").on(t.videoId, t.createdAt),
+]);
+
+export const schema = { user, session, account, verification, mediaAssets, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, feedbackVideos, feedbackAssignments, feedbackComments };
