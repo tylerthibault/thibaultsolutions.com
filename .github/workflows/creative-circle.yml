@@ -22,7 +22,7 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/creative_circle
       APP_URL: http://localhost:3000
-      BETTER_AUTH_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
+      BETTER_AUTH_SECRET: ${{ github.sha }}-creative-circle-ci-only
       OWNER_EMAIL: owner@example.test
       OWNER_PASSWORD: ci-owner-password-12345
       MEDIA_STORAGE_PATH: /tmp/creative-circle-data
@@ -38,8 +38,7 @@ jobs:
       - name: Audit production dependency graph
         run: |
           npm audit --json > audit.json || true
-          npm ls --omit=dev --all --json > prod-tree.json
-          node scripts/check-production-audit.mjs audit.json prod-tree.json
+          node scripts/check-production-audit.mjs audit.json package-lock.json
       - run: npm run db:migrate
       - run: npm run typecheck
       - run: npm run lint
