@@ -3,6 +3,8 @@ on:
   push:
     branches: [main, "creative-circle/**"]
   pull_request:
+permissions:
+  contents: write
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -30,7 +32,21 @@ jobs:
         with: { node-version: 22 }
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: npm install
-      - run: npm audit --omit=dev --audit-level=critical
+      - name: Commit generated dependency lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/creative-circle/v1'
+        run: |
+          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "Lock Creative Circle dependencies"
+            git push
+          fi
+      - name: Audit production dependency graph
+        run: |
+          npm audit --json > audit.json || true
+          npm ls --omit=dev --all --json > prod-tree.json
+          node scripts/check-production-audit.mjs audit.json prod-tree.json
       - run: npm run db:migrate
       - run: npm run typecheck
       - run: npm run lint
