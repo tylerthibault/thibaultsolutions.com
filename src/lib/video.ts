@@ -39,14 +39,16 @@ export async function probeVideo(input: string): Promise<VideoMetadata> {
   const side = Array.isArray(video.side_data_list) ? video.side_data_list as Array<Record<string, unknown>> : [];
   const sideRotation = side.find((entry) => typeof entry.rotation === "number")?.rotation;
   const rotation = Number(sideRotation ?? tags.rotate ?? 0) || 0;
+  const normalizedRotation = ((rotation % 360) + 360) % 360;
+  const swapsAxes = normalizedRotation === 90 || normalizedRotation === 270;
   return {
-    width,
-    height,
+    width: swapsAxes ? height : width,
+    height: swapsAxes ? width : height,
     durationMs: Math.round(duration * 1000),
     frameRate: String(video.avg_frame_rate ?? video.r_frame_rate ?? "0/1"),
     codec: String(video.codec_name ?? "unknown"),
     hasAudio: audio,
-    rotation,
+    rotation: normalizedRotation,
   };
 }
 
