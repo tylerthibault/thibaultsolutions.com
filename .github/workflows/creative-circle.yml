@@ -1,13 +1,11 @@
 name: Creative Circle CI
 on:
   push:
-    branches: [main, "creative-circle/**"]
+    branches: [main]
   pull_request:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-permissions:
-  contents: write
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -30,21 +28,13 @@ jobs:
       MEDIA_STORAGE_PATH: /tmp/creative-circle-data
       MAX_UPLOAD_SIZE: 104857600
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: npm install
-      - name: Commit generated dependency lockfile
-        if: github.event_name == 'push' && github.ref == 'refs/heads/creative-circle/v1'
-        run: |
-          if [ -n "$(git status --porcelain -- package-lock.json)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "Lock Creative Circle dependencies"
-            git push
-          fi
+      - run: npm ci
       - name: Audit production dependency graph
         run: |
           npm audit --json > audit.json || true
