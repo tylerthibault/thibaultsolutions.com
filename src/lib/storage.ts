@@ -5,7 +5,7 @@ const root = path.resolve(process.env.MEDIA_STORAGE_PATH ?? "/data");
 export type StorageArea = "uploads" | "renders" | "thumbnails" | "temp";
 
 export async function ensureStorage() {
-  await Promise.all((["uploads", "renders", "thumbnails", "temp"] as const).map((area) => mkdir(path.join(root, area), { recursive: true })));
+  await Promise.all((["uploads", "renders", "thumbnails", "temp"] as const).map((area) => mkdir(/* turbopackIgnore: true */ path.join(root, area), { recursive: true })));
 }
 
 export function storagePath(area: StorageArea, key: string) {
@@ -15,10 +15,10 @@ export function storagePath(area: StorageArea, key: string) {
 }
 
 export async function fileSize(area: StorageArea, key: string) {
-  return (await stat(storagePath(area, key))).size;
+  return (await stat(/* turbopackIgnore: true */ storagePath(area, key))).size;
 }
 
 export async function removeStored(area: StorageArea, key?: string | null) {
   if (!key) return;
-  await unlink(storagePath(area, key)).catch(() => undefined);
+  await unlink(/* turbopackIgnore: true */ storagePath(area, key)).catch(() => undefined);
 }
