@@ -1,17 +1,19 @@
 import { mkdir, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 
-const root = path.resolve(process.env.MEDIA_STORAGE_PATH ?? "/data");
+const root = path.resolve(/* turbopackIgnore: true */ process.env.MEDIA_STORAGE_PATH ?? "/data");
 export type StorageArea = "uploads" | "renders" | "thumbnails" | "temp";
 
 export async function ensureStorage() {
-  await Promise.all((["uploads", "renders", "thumbnails", "temp"] as const).map((area) => mkdir(/* turbopackIgnore: true */ path.join(root, area), { recursive: true })));
+  await Promise.all((["uploads", "renders", "thumbnails", "temp"] as const).map((area) =>
+    mkdir(path.join(/* turbopackIgnore: true */ root, area), { recursive: true })
+  ));
 }
 
 export function storagePath(area: StorageArea, key: string) {
   const safe = path.basename(key);
   if (safe !== key) throw new Error("Invalid storage key");
-  return path.join(root, area, safe);
+  return path.join(/* turbopackIgnore: true */ root, area, safe);
 }
 
 export async function fileSize(area: StorageArea, key: string) {
