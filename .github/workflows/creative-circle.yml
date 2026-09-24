@@ -25,6 +25,7 @@ jobs:
       BETTER_AUTH_SECRET: ${{ github.sha }}-creative-circle-ci-only
       OWNER_EMAIL: owner@example.test
       OWNER_PASSWORD: ci-owner-password-12345
+      CREATIVE_CIRCLE_SIGNUP_PIN: 735194
       MEDIA_STORAGE_PATH: /tmp/creative-circle-data
       MAX_UPLOAD_SIZE: 104857600
     steps:
