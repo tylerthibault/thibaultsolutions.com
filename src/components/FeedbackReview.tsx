@@ -60,6 +60,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
   const [currentMs, setCurrentMs] = useState(0);
   const [capturedMs, setCapturedMs] = useState<number | null>(null);
   const [timelineReady, setTimelineReady] = useState(video.sourceType === "upload");
+  const [tiktokPaused, setTikTokPaused] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [generalNote, setGeneralNote] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -77,6 +78,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
       target?.postMessage({ type: "pause", "x-tiktok-player": true }, "https://www.tiktok.com");
       target?.postMessage({ type: "seekTo", value: holdAt, "x-tiktok-player": true }, "https://www.tiktok.com");
       setCurrentMs(Math.round(holdAt * 1000));
+      setTikTokPaused(true);
       tiktokEndHeld.current = true;
     }
 
@@ -101,9 +103,20 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
         return;
       }
 
-      if (event.data.type === "onStateChange" && event.data.value === 0) {
-        const duration = tiktokDurationSeconds.current;
-        if (duration !== null) holdTikTokOnLastFrame(duration);
+      if (event.data.type === "onStateChange") {
+        if (event.data.value === 1) {
+          setTikTokPaused(false);
+          return;
+        }
+        if (event.data.value === 2) {
+          setTikTokPaused(true);
+          return;
+        }
+        if (event.data.value === 0) {
+          const duration = tiktokDurationSeconds.current;
+          if (duration !== null) holdTikTokOnLastFrame(duration);
+          else setTikTokPaused(true);
+        }
       }
     }
 
@@ -186,6 +199,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
         { type: "pause", "x-tiktok-player": true },
         "https://www.tiktok.com",
       );
+      setTikTokPaused(true);
       if (timelineReady) ms = currentMs;
     } else if (video.provider === "youtube" && youtubePlayer.current) {
       youtubePlayer.current.pauseVideo();
@@ -202,6 +216,15 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
     setError("");
     setComposerOpen(true);
     window.requestAnimationFrame(() => commentInput.current?.focus());
+  }
+
+  function resumeTikTok() {
+    if (video.provider !== "tiktok") return;
+    iframePlayer.current?.contentWindow?.postMessage(
+      { type: "play", "x-tiktok-player": true },
+      "https://www.tiktok.com",
+    );
+    setTikTokPaused(false);
   }
 
   async function postComment() {
@@ -247,6 +270,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
       const target = iframePlayer.current?.contentWindow;
       target?.postMessage({ type: "seekTo", value: ms / 1000, "x-tiktok-player": true }, "https://www.tiktok.com");
       target?.postMessage({ type: "play", "x-tiktok-player": true }, "https://www.tiktok.com");
+      setTikTokPaused(false);
       return;
     }
 
@@ -292,6 +316,14 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
         ) : (
           <div className="empty">This linked video cannot be embedded.</div>
         )}
+
+        {video.provider === "tiktok" && tiktokPaused && !composerOpen && <div className="feedback-paused-overlay">
+          <button className="feedback-resume-button" type="button" onClick={resumeTikTok} aria-label="Resume video">
+            <span className="feedback-resume-icon">▶</span>
+            <span>RESUME VIDEO</span>
+            {timelineReady && <small>{timeLabel(currentMs)}</small>}
+          </button>
+        </div>}
 
         {composerOpen && <div className="feedback-comment-overlay">
           <div className="feedback-comment-popover" role="dialog" aria-modal="true" aria-labelledby="feedback-comment-title">
