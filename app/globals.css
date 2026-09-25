@@ -152,28 +152,16 @@
 .feedback-delete-video-btn:disabled{opacity:.55;cursor:wait}
 .feedback-delete-video-btn.compact{padding:6px 8px;background:#0a0c10e8;backdrop-filter:blur(8px)}
 
-/* Unified Feedback Lab player: uploaded files and controllable social embeds share one review surface. */
-.feedback-player{padding:20px;min-height:620px}
-.feedback-media-frame{position:relative;width:min(100%,430px);aspect-ratio:9/16;max-height:72vh;background:#000;overflow:hidden;border-radius:4px;box-shadow:0 0 0 1px #1c232c}
-.feedback-media-frame>video,.feedback-media-frame>iframe{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;min-height:0;border:0;background:#000;object-fit:contain}
-.feedback-controlled-iframe{pointer-events:none}
-.feedback-unified-paused{position:absolute;inset:0;z-index:5;display:grid;place-items:center;align-content:center;gap:10px;border:0;background:#030507;color:var(--ink);cursor:pointer}
-.feedback-unified-play{display:grid;place-items:center;width:72px;height:72px;padding-left:5px;border:1px solid #4c5665;border-radius:50%;background:#0a0e14;font-size:28px}
-.feedback-unified-paused:hover .feedback-unified-play{border-color:var(--lime);color:var(--lime)}
-.feedback-unified-paused small{font-size:9px;color:var(--muted);font-weight:800;letter-spacing:.06em}
-.feedback-custom-controls{position:absolute;left:0;right:0;bottom:0;z-index:7;display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px;background:linear-gradient(transparent,#05070ae8 34%)}
-.feedback-control-button{display:grid;place-items:center;width:34px;height:34px;border:0;background:transparent;color:white;cursor:pointer;font:inherit;font-size:16px;font-weight:800}
-.feedback-control-button:hover{color:var(--lime)}
-.feedback-control-time{white-space:nowrap;color:white;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
-.feedback-progress-range{width:100%;accent-color:var(--lime);cursor:pointer}
-.feedback-fullscreen-button{font-size:20px}
-.feedback-platform-note{position:absolute;left:10px;bottom:10px;z-index:7;padding:6px 8px;border-radius:999px;background:#05070adc;color:var(--muted);font-size:7px;font-weight:800;letter-spacing:.05em}
-.feedback-media-frame:fullscreen{width:100vw;height:100vh;max-height:none;aspect-ratio:auto;border-radius:0}
-.feedback-media-frame:fullscreen>video,.feedback-media-frame:fullscreen>iframe{object-fit:contain}
-.feedback-media-frame:fullscreen .feedback-custom-controls{padding:18px 24px}
-.feedback-media-frame .feedback-comment-overlay{z-index:10}
-@media(max-width:1050px){.feedback-player{min-height:560px}.feedback-media-frame{max-height:68vh}.feedback-player iframe{min-height:0}}
-@media(max-width:700px){.feedback-player{padding:0;min-height:0}.feedback-media-frame{width:100%;max-height:none;border-radius:0}.feedback-custom-controls{grid-template-columns:auto auto minmax(80px,1fr) auto;gap:6px;padding:9px}.feedback-control-time{font-size:9px}}
+/* Feedback Lab player: native browser/platform controls are the source of truth. */
+.feedback-player{padding:20px;min-height:420px}
+.feedback-native-video{display:block;width:auto;height:auto;max-width:100%;max-height:72vh;background:#000}
+.feedback-social-frame{display:block;width:min(100%,430px);aspect-ratio:9/16;min-height:0;border:0;background:#000}
+.feedback-playback-status{width:min(100%,560px);min-height:320px;display:grid;place-items:center;align-content:center;gap:12px;padding:28px;text-align:center;border:1px solid var(--line);border-radius:10px;background:#05070a}
+.feedback-playback-status strong{font-size:18px}
+.feedback-playback-status p{max-width:480px;margin:0;color:var(--muted);font-size:10px;line-height:1.6}
+.feedback-playback-status.error,.feedback-playback-status.missing{border-color:#6e2d34}
+@media(max-width:1050px){.feedback-player{min-height:360px}.feedback-native-video{max-height:68vh}}
+@media(max-width:700px){.feedback-player{padding:0;min-height:280px}.feedback-native-video,.feedback-social-frame{width:100%;max-height:none}.feedback-social-frame{min-height:70vh}.feedback-playback-status{border-radius:0;min-height:360px}}
 
 /* Preserve each video's native orientation on Feedback Lab cards. */
 .feedback-grid{align-items:start}

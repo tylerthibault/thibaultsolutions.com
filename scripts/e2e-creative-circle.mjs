@@ -102,7 +102,7 @@ if (!cookie) throw new Error("Login did not return a session cookie");
 const approved = await api("/api/creative-circle/admin/invitations", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ email: signupEmail })
+  body: JSON.stringify({ identifier: signupEmail, labAccess: true, feedbackAccess: true })
 }, cookie);
 if (approved.response.status !== 201 || approved.json?.memberAdded !== true) {
   throw new Error(`Admin approval failed: ${approved.response.status} ${approved.text}`);
@@ -131,6 +131,37 @@ await run(process.env.FFMPEG_PATH ?? "ffmpeg", [
 ]);
 
 const source = await readFile(fixture);
+
+const feedbackCreated = await api("/api/feedback/videos", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ title: "CI Feedback Playback", sourceType: "upload", reviewerIds: [] })
+}, cookie);
+if (feedbackCreated.response.status !== 201) throw new Error(`Feedback video creation failed: ${feedbackCreated.response.status} ${feedbackCreated.text}`);
+const feedbackId = feedbackCreated.json?.video?.id;
+if (!feedbackId) throw new Error("Feedback video creation did not return an id");
+
+const feedbackUpload = await api(`/api/feedback/videos/${feedbackId}/upload`, {
+  method: "POST",
+  headers: { "Content-Type": "video/mp4", "X-File-Name": "ci-feedback.mp4" },
+  body: source
+}, cookie);
+if (feedbackUpload.response.status !== 201) throw new Error(`Feedback upload failed: ${feedbackUpload.response.status} ${feedbackUpload.text}`);
+
+const prepared = await api(`/api/feedback/videos/${feedbackId}/prepare`, { method: "POST" }, cookie);
+if (!prepared.response.ok || prepared.json?.status !== "ready") {
+  throw new Error(`Feedback playback preparation failed: ${prepared.response.status} ${prepared.text}`);
+}
+
+const feedbackMedia = await fetch(`${base}/api/feedback/videos/${feedbackId}/media`, {
+  headers: { "Origin": base, "Cookie": cookie, "Range": "bytes=0-1023" }
+});
+if (feedbackMedia.status !== 206) throw new Error(`Feedback media range request failed: ${feedbackMedia.status}`);
+if (feedbackMedia.headers.get("content-type") !== "video/mp4") throw new Error("Feedback media did not return video/mp4");
+if ((await feedbackMedia.arrayBuffer()).byteLength === 0) throw new Error("Feedback media range was empty");
+
+const feedbackRemoved = await api(`/api/feedback/videos/${feedbackId}`, { method: "DELETE" }, cookie);
+if (!feedbackRemoved.response.ok) throw new Error(`Feedback cleanup failed: ${feedbackRemoved.response.status} ${feedbackRemoved.text}`);
 const uploaded = await api(`/api/projects/${projectId}/upload`, {
   method: "POST",
   headers: { "Content-Type": "video/mp4", "X-File-Name": "ci-portrait.mp4" },

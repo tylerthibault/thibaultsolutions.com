@@ -30,22 +30,10 @@ export function parseFeedbackLink(raw: string): ParsedFeedbackLink | null {
   if (host === "tiktok.com" || host === "m.tiktok.com") {
     const match = url.pathname.match(/\/video\/(\d+)/);
     if (!match) return null;
-    const params = new URLSearchParams({
-      controls: "0",
-      progress_bar: "0",
-      play_button: "0",
-      volume_control: "0",
-      fullscreen_button: "0",
-      timestamp: "0",
-      music_info: "0",
-      description: "0",
-      rel: "0",
-      native_context_menu: "0",
-    });
     return {
       provider: "tiktok",
       canonicalUrl: `https://www.tiktok.com${url.pathname}`,
-      embedUrl: `https://www.tiktok.com/player/v1/${match[1]}?${params.toString()}`,
+      embedUrl: `https://www.tiktok.com/player/v1/${match[1]}`,
       videoId: match[1],
     };
   }

@@ -1,61 +1,15 @@
 import { createReadStream } from "node:fs";
-import { randomUUID } from "node:crypto";
-import { rename, stat, unlink } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { eq } from "drizzle-orm";
 import { apiSectionUser } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
 import { getFeedbackVideoAccess } from "@/src/lib/feedback-access";
+import { getFeedbackPlaybackState } from "@/src/lib/feedback-playback";
 import { mediaAssets } from "@/src/lib/schema";
-import { ensureStorage, storagePath } from "@/src/lib/storage";
-import { makeBrowserPlaybackCopy } from "@/src/lib/video";
 
 export const runtime = "nodejs";
-
-const globalForFeedbackPlayback = globalThis as unknown as {
-  feedbackPlaybackJobs?: Map<string, Promise<void>>;
-};
-
-const playbackJobs = globalForFeedbackPlayback.feedbackPlaybackJobs ?? new Map<string, Promise<void>>();
-if (!globalForFeedbackPlayback.feedbackPlaybackJobs) {
-  globalForFeedbackPlayback.feedbackPlaybackJobs = playbackJobs;
-}
-
-async function exists(file: string) {
-  return stat(file).catch(() => null);
-}
-
-async function ensureBrowserCopy(asset: { id: string; codec: string; storageKey: string }) {
-  await ensureStorage();
-  const source = storagePath("uploads", asset.storageKey);
-  const target = storagePath("renders", `${asset.id}.feedback-browser.mp4`);
-
-  if (await exists(target)) return target;
-
-  let job = playbackJobs.get(asset.id);
-  if (!job) {
-    job = (async () => {
-      const temp = storagePath("temp", `${asset.id}.${randomUUID()}.feedback-browser.mp4`);
-      try {
-        await makeBrowserPlaybackCopy(source, temp, asset.codec);
-        try {
-          await rename(temp, target);
-        } catch (error) {
-          if (!(await exists(target))) throw error;
-          await unlink(temp).catch(() => undefined);
-        }
-      } finally {
-        await unlink(temp).catch(() => undefined);
-      }
-    })().finally(() => {
-      playbackJobs.delete(asset.id);
-    });
-    playbackJobs.set(asset.id, job);
-  }
-
-  await job;
-  return target;
-}
+export const dynamic = "force-dynamic";
 
 function byteRange(header: string, size: number) {
   const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
@@ -89,45 +43,26 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     .limit(1);
   if (!asset) return new Response("Not found", { status: 404 });
 
-  const source = storagePath("uploads", asset.storageKey);
-  const sourceInfo = await exists(source);
-  if (!sourceInfo) {
+  const playback = await getFeedbackPlaybackState(asset);
+
+  if (playback.status === "missing") {
     console.error("Feedback Lab media source is missing from storage", {
       videoId: id,
       assetId: asset.id,
       storageKey: asset.storageKey,
       mediaStoragePath: process.env.MEDIA_STORAGE_PATH ?? "/data",
     });
-    return new Response("Feedback video file is missing from media storage. Re-upload the video.", { status: 410 });
+    return new Response("Feedback video file is missing from media storage.", { status: 410 });
   }
 
-  let file = source;
-  let contentType = asset.mimeType;
-
-  // Legacy uploads were stored exactly as supplied. MOV/HEVC/WebM can validate
-  // server-side but fail in Chromium/Brave, so cache a browser-safe MP4 for them.
-  const browserSafe = asset.mimeType === "video/mp4" && asset.codec.toLowerCase() === "h264";
-  if (!browserSafe) {
-    try {
-      file = await ensureBrowserCopy({
-        id: asset.id,
-        codec: asset.codec,
-        storageKey: asset.storageKey,
-      });
-      contentType = "video/mp4";
-    } catch (error) {
-      console.error("Feedback Lab browser playback conversion failed", {
-        videoId: id,
-        assetId: asset.id,
-        codec: asset.codec,
-        mimeType: asset.mimeType,
-        error,
-      });
-      return new Response("Video could not be prepared for browser playback.", { status: 500 });
-    }
+  if (playback.status !== "ready" || !playback.file) {
+    return new Response("Video playback is not ready yet.", {
+      status: 409,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
-  const info = await stat(file);
+  const info = await stat(playback.file);
   const rangeHeader = request.headers.get("range");
 
   if (rangeHeader) {
@@ -139,7 +74,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
       });
     }
 
-    const stream = Readable.toWeb(createReadStream(file, {
+    const stream = Readable.toWeb(createReadStream(playback.file, {
       start: range.start,
       end: range.end,
     })) as ReadableStream;
@@ -147,7 +82,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     return new Response(stream, {
       status: 206,
       headers: {
-        "Content-Type": contentType,
+        "Content-Type": "video/mp4",
         "Accept-Ranges": "bytes",
         "Content-Range": `bytes ${range.start}-${range.end}/${info.size}`,
         "Content-Length": String(range.end - range.start + 1),
@@ -157,9 +92,9 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     });
   }
 
-  return new Response(Readable.toWeb(createReadStream(file)) as ReadableStream, {
+  return new Response(Readable.toWeb(createReadStream(playback.file)) as ReadableStream, {
     headers: {
-      "Content-Type": contentType,
+      "Content-Type": "video/mp4",
       "Content-Length": String(info.size),
       "Accept-Ranges": "bytes",
       "Cache-Control": "private, no-store",
