@@ -52,6 +52,8 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
   const iframePlayer = useRef<HTMLIFrameElement | null>(null);
   const youtubePlayer = useRef<YouTubePlayer | null>(null);
   const commentInput = useRef<HTMLTextAreaElement | null>(null);
+  const tiktokDurationSeconds = useRef<number | null>(null);
+  const tiktokEndHeld = useRef(false);
 
   const [comments, setComments] = useState(initialComments.map((c) => ({ ...c, createdAt: new Date(c.createdAt).toISOString(), updatedAt: new Date(c.updatedAt).toISOString() })));
   const [body, setBody] = useState("");
@@ -69,13 +71,40 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
   useEffect(() => {
     if (video.provider !== "tiktok") return;
 
+    function holdTikTokOnLastFrame(duration: number) {
+      const target = iframePlayer.current?.contentWindow;
+      const holdAt = Math.max(0, duration - 0.12);
+      target?.postMessage({ type: "pause", "x-tiktok-player": true }, "https://www.tiktok.com");
+      target?.postMessage({ type: "seekTo", value: holdAt, "x-tiktok-player": true }, "https://www.tiktok.com");
+      setCurrentMs(Math.round(holdAt * 1000));
+      tiktokEndHeld.current = true;
+    }
+
     function receiveTikTokMessage(event: MessageEvent) {
       if (event.origin !== "https://www.tiktok.com" || event.source !== iframePlayer.current?.contentWindow) return;
-      if (!isRecord(event.data) || event.data["x-tiktok-player"] !== true || event.data.type !== "onCurrentTime") return;
-      if (!isRecord(event.data.value) || typeof event.data.value.currentTime !== "number") return;
+      if (!isRecord(event.data) || event.data["x-tiktok-player"] !== true) return;
 
-      setCurrentMs(Math.round(event.data.value.currentTime * 1000));
-      setTimelineReady(true);
+      if (event.data.type === "onCurrentTime" && isRecord(event.data.value) && typeof event.data.value.currentTime === "number") {
+        const currentTime = event.data.value.currentTime;
+        const duration = typeof event.data.value.duration === "number" ? event.data.value.duration : null;
+        if (duration !== null && Number.isFinite(duration) && duration > 0) {
+          tiktokDurationSeconds.current = duration;
+          if (currentTime < duration - 0.75) tiktokEndHeld.current = false;
+          if (!tiktokEndHeld.current && currentTime >= duration - 0.18) {
+            holdTikTokOnLastFrame(duration);
+            return;
+          }
+        }
+
+        setCurrentMs(Math.round(currentTime * 1000));
+        setTimelineReady(true);
+        return;
+      }
+
+      if (event.data.type === "onStateChange" && event.data.value === 0) {
+        const duration = tiktokDurationSeconds.current;
+        if (duration !== null) holdTikTokOnLastFrame(duration);
+      }
     }
 
     window.addEventListener("message", receiveTikTokMessage);
