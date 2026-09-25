@@ -15,7 +15,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   const [invite] = await db.select().from(circleInvitations).where(eq(circleInvitations.tokenHash, hashToken(token))).limit(1);
   const session = await getSession();
 
-  if (!invite || invite.expiresAt.getTime() < Date.now()) {
+  if (!invite) {
     return <main className="login-wrap"><section className="login-card">
       <span className="micro" style={{ color: "var(--danger)" }}>INVITE UNAVAILABLE</span>
       <h1>LINK<br/>EXPIRED.</h1>
