@@ -4,8 +4,8 @@ import { z } from "zod";
 import { apiSectionUser } from "@/src/lib/api-auth";
 import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { feedbackAssignments, feedbackVideos, user as users } from "@/src/lib/schema";
-import { parseFeedbackLink } from "@/src/lib/feedback-links";
+import { feedbackAssignments, feedbackVideos, feedbackViews, user as users } from "@/src/lib/schema";
+import { parseFeedbackLink, resolveFeedbackThumbnail } from "@/src/lib/feedback-links";
 
 const createSchema = z.object({
   title: z.string().trim().min(1).max(140),
@@ -44,12 +44,26 @@ export async function GET(request: Request) {
     .where(eq(feedbackVideos.isPublic, true))
     .orderBy(desc(feedbackVideos.updatedAt));
 
+  const views = await db.select({
+    videoId: feedbackViews.videoId,
+    seenAt: feedbackViews.seenAt,
+  }).from(feedbackViews).where(eq(feedbackViews.viewerUserId, current.id));
+  const seenByVideo = new Map(views.map((view) => [view.videoId, view.seenAt]));
+
   const assignedIds = new Set(assigned.map((item) => item.video.id));
   const queue = [
-    ...assigned.map((item) => ({ ...item, publicListing: false })),
+    ...assigned.map((item) => ({
+      ...item,
+      seenAt: seenByVideo.get(item.video.id) ?? item.seenAt,
+      publicListing: false,
+    })),
     ...publicVideos
       .filter((item) => !assignedIds.has(item.video.id))
-      .map((item) => ({ ...item, seenAt: null, publicListing: true })),
+      .map((item) => ({
+        ...item,
+        seenAt: seenByVideo.get(item.video.id) ?? null,
+        publicListing: true,
+      })),
   ];
 
   return NextResponse.json({ owned, assigned: queue });
@@ -67,11 +81,13 @@ export async function POST(request: Request) {
 
   let sourceUrl: string | null = null;
   let provider: string | null = null;
+  let thumbnailUrl: string | null = null;
   if (parsed.data.sourceType === "link") {
     const linked = parseFeedbackLink(parsed.data.sourceUrl ?? "");
     if (!linked) return NextResponse.json({ error: "Use a valid YouTube, TikTok, or Instagram video link." }, { status: 400 });
     sourceUrl = linked.canonicalUrl;
     provider = linked.provider;
+    thumbnailUrl = await resolveFeedbackThumbnail(linked);
   }
 
   const [video] = await db.insert(feedbackVideos).values({
@@ -80,6 +96,7 @@ export async function POST(request: Request) {
     sourceType: parsed.data.sourceType,
     sourceUrl,
     provider,
+    thumbnailUrl,
   }).returning();
 
   const requested = [...new Set(parsed.data.reviewerIds)].filter((id) => id !== current.id);

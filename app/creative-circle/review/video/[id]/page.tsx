@@ -4,7 +4,7 @@ import { requireSectionUser } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { getFeedbackVideoAccess } from "@/src/lib/feedback-access";
 import { parseFeedbackLink } from "@/src/lib/feedback-links";
-import { feedbackAssignments, feedbackComments, user as users } from "@/src/lib/schema";
+import { feedbackAssignments, feedbackComments, feedbackViews, user as users } from "@/src/lib/schema";
 import { CcNav } from "@/src/components/CcNav";
 import { FeedbackReview } from "@/src/components/FeedbackReview";
 import { FeedbackVisibilityToggle } from "@/src/components/FeedbackVisibilityToggle";
@@ -32,8 +32,18 @@ export default async function FeedbackVideoPage({ params }: { params: Promise<{ 
     .where(eq(feedbackComments.videoId, id))
     .orderBy(asc(feedbackComments.createdAt));
 
-  if (access.role === "reviewer" && access.assignment) {
-    await db.update(feedbackAssignments).set({ seenAt: new Date() }).where(eq(feedbackAssignments.id, access.assignment.id));
+  if (access.role === "reviewer") {
+    const seenAt = new Date();
+    await db.insert(feedbackViews)
+      .values({ videoId: id, viewerUserId: current.id, seenAt })
+      .onConflictDoUpdate({
+        target: [feedbackViews.videoId, feedbackViews.viewerUserId],
+        set: { seenAt },
+      });
+
+    if (access.assignment) {
+      await db.update(feedbackAssignments).set({ seenAt }).where(eq(feedbackAssignments.id, access.assignment.id));
+    }
   }
 
   const linked = access.video.sourceUrl ? parseFeedbackLink(access.video.sourceUrl) : null;

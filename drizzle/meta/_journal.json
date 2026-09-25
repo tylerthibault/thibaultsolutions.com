@@ -43,6 +43,13 @@
       "when": 1790312500000,
       "tag": "0005_feedback_video_public",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790314300000,
+      "tag": "0006_feedback_thumbnails_views",
+      "breakpoints": true
     }
   ]
 }

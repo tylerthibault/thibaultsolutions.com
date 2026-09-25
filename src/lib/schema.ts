@@ -161,6 +161,7 @@ export const feedbackVideos = pgTable("feedback_videos", {
   assetId: uuid("asset_id").references(() => mediaAssets.id, { onDelete: "set null" }),
   sourceUrl: text("source_url"),
   provider: text("provider"),
+  thumbnailUrl: text("thumbnail_url"),
   durationMs: integer("duration_ms"),
   isPublic: boolean("is_public").notNull().default(false),
   status: text("status").notNull().default("open"),
@@ -181,6 +182,16 @@ export const feedbackAssignments = pgTable("feedback_assignments", {
   index("feedback_assignment_reviewer_idx").on(t.reviewerUserId, t.createdAt),
 ]);
 
+export const feedbackViews = pgTable("feedback_views", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  videoId: uuid("video_id").notNull().references(() => feedbackVideos.id, { onDelete: "cascade" }),
+  viewerUserId: text("viewer_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  seenAt: timestamp("seen_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("feedback_view_unique").on(t.videoId, t.viewerUserId),
+  index("feedback_view_viewer_idx").on(t.viewerUserId, t.seenAt),
+]);
+
 export const feedbackComments = pgTable("feedback_comments", {
   id: uuid("id").defaultRandom().primaryKey(),
   videoId: uuid("video_id").notNull().references(() => feedbackVideos.id, { onDelete: "cascade" }),
@@ -194,4 +205,4 @@ export const feedbackComments = pgTable("feedback_comments", {
   index("feedback_comment_video_idx").on(t.videoId, t.createdAt),
 ]);
 
-export const schema = { user, session, account, verification, mediaAssets, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, creativeCircleInvitations, feedbackVideos, feedbackAssignments, feedbackComments };
+export const schema = { user, session, account, verification, mediaAssets, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, creativeCircleInvitations, feedbackVideos, feedbackAssignments, feedbackViews, feedbackComments };

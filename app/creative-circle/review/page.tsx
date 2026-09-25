@@ -2,9 +2,33 @@ import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { isCreativeCircleAdmin, requireSectionUser } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { feedbackAssignments, feedbackVideos, user as users } from "@/src/lib/schema";
+import { feedbackAssignments, feedbackVideos, feedbackViews, user as users } from "@/src/lib/schema";
 import { CcNav } from "@/src/components/CcNav";
 import { SignOutButton } from "@/src/components/SignOutButton";
+import { parseFeedbackLink, resolveFeedbackThumbnail } from "@/src/lib/feedback-links";
+
+async function thumbnailFor(video: typeof feedbackVideos.$inferSelect) {
+  if (video.sourceType === "upload" && video.assetId) {
+    return `/api/feedback/videos/${video.id}/thumbnail`;
+  }
+  if (video.thumbnailUrl) return video.thumbnailUrl;
+  if (!video.sourceUrl) return null;
+
+  const linked = parseFeedbackLink(video.sourceUrl);
+  if (!linked) return null;
+  const thumbnail = await resolveFeedbackThumbnail(linked);
+  if (thumbnail) {
+    await db.update(feedbackVideos)
+      .set({ thumbnailUrl: thumbnail })
+      .where(eq(feedbackVideos.id, video.id));
+  }
+  return thumbnail;
+}
+
+function VideoThumb({ src, title }: { src: string | null; title: string }) {
+  if (!src) return <div className="feedback-card-thumb fallback"><span>NO PREVIEW</span></div>;
+  return <div className="feedback-card-thumb"><img src={src} alt="" loading="lazy"/><span className="feedback-thumb-play">▶</span><span className="sr-only">{title}</span></div>;
+}
 
 function SourceBadge({ type, provider }: { type: string; provider: string | null }) {
   const label = type === "upload" ? "UPLOADED VIDEO" : (provider ?? "LINK").toUpperCase();
@@ -41,13 +65,30 @@ export default async function FeedbackHome() {
     .where(eq(feedbackVideos.isPublic, true))
     .orderBy(desc(feedbackVideos.updatedAt));
 
+  const views = await db.select({
+    videoId: feedbackViews.videoId,
+    seenAt: feedbackViews.seenAt,
+  }).from(feedbackViews).where(eq(feedbackViews.viewerUserId, current.id));
+  const seenByVideo = new Map(views.map((view) => [view.videoId, view.seenAt]));
+
   const assignedIds = new Set(assigned.map((item) => item.video.id));
   const reviewQueue = [
-    ...assigned.map((item) => ({ ...item, publicListing: false })),
+    ...assigned.map((item) => ({
+      ...item,
+      seenAt: seenByVideo.get(item.video.id) ?? item.seenAt,
+      publicListing: false,
+    })),
     ...publicVideos
       .filter((item) => !assignedIds.has(item.video.id))
-      .map((item) => ({ ...item, seenAt: null, publicListing: true })),
+      .map((item) => ({
+        ...item,
+        seenAt: seenByVideo.get(item.video.id) ?? null,
+        publicListing: true,
+      })),
   ].sort((a, b) => new Date(b.video.updatedAt).getTime() - new Date(a.video.updatedAt).getTime());
+
+  const ownedThumbs = new Map(await Promise.all(owned.map(async (video) => [video.id, await thumbnailFor(video)] as const)));
+  const queueThumbs = new Map(await Promise.all(reviewQueue.map(async ({ video }) => [video.id, await thumbnailFor(video)] as const)));
 
   return <><CcNav userEmail={current.email}/><main className="cc-main">
     <section className="feedback-hero">
@@ -88,7 +129,7 @@ export default async function FeedbackHome() {
       {owned.length === 0
         ? <div className="empty"><p>No feedback videos yet.</p><Link className="btn primary" href="/creative-circle/review/new">ADD YOUR FIRST VIDEO</Link></div>
         : <div className="feedback-grid">{owned.map((video) => <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`} key={video.id}>
-            <div className="feedback-card-art"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong></div>
+            <VideoThumb src={ownedThumbs.get(video.id) ?? null} title={video.title}/><div className="feedback-card-art compact"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong></div>
             <div className="feedback-card-meta"><span>{video.status.toUpperCase()}</span><span>{new Date(video.updatedAt).toLocaleDateString()}</span></div>
           </Link>)}</div>}
     </>}
@@ -98,8 +139,12 @@ export default async function FeedbackHome() {
       {reviewQueue.length === 0
         ? <div className="empty"><p>No videos are waiting for your feedback right now.</p></div>
         : <div className="feedback-grid">{reviewQueue.map(({ video, ownerName, seenAt, publicListing }) => <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`} key={video.id}>
-            <div className="feedback-card-art"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong><small className="muted">FROM {ownerName.toUpperCase()}</small></div>
-            <div className="feedback-card-meta"><span>{publicListing ? "PUBLIC" : seenAt ? "VIEWED" : "NEW"}</span><span>{new Date(video.updatedAt).toLocaleDateString()}</span></div>
+            <VideoThumb src={queueThumbs.get(video.id) ?? null} title={video.title}/>
+            <div className="feedback-card-art compact"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong><small className="muted">FROM {ownerName.toUpperCase()}</small></div>
+            <div className="feedback-card-meta">
+              <span className={seenAt ? "feedback-seen viewed" : "feedback-seen new"}>{seenAt ? "✓ VIEWED" : "● NEW / UNSEEN"}</span>
+              <span>{publicListing ? "PUBLIC" : "ASSIGNED"} · {new Date(video.updatedAt).toLocaleDateString()}</span>
+            </div>
           </Link>)}</div>}
     </section>
   </main></>;
