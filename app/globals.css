@@ -187,3 +187,11 @@
 /* Keep portrait cards compact while still signaling vertical video. */
 .feedback-card-thumb.portrait{aspect-ratio:4/5;max-height:460px}
 @media(max-width:1100px){.feedback-card-thumb.portrait{aspect-ratio:3/4;max-height:420px}}
+
+/* Keep review cards compact without losing the video's native composition. */
+.feedback-card-thumb{height:300px;aspect-ratio:auto}
+.feedback-card-thumb.landscape,.feedback-card-thumb.portrait,.feedback-card-thumb.square{aspect-ratio:auto;max-height:none}
+.feedback-card-thumb.landscape img{object-fit:cover}
+.feedback-card-thumb.portrait img,.feedback-card-thumb.square img{object-fit:contain;background:#05070a}
+@media(max-width:1100px){.feedback-card-thumb{height:260px}}
+@media(max-width:700px){.feedback-card-thumb{height:220px}}
