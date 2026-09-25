@@ -35,7 +35,24 @@ export async function GET(request: Request) {
     .where(eq(feedbackAssignments.reviewerUserId, current.id))
     .orderBy(desc(feedbackAssignments.createdAt));
 
-  return NextResponse.json({ owned, assigned });
+  const publicVideos = isCreativeCircleAdmin(current.email) ? [] : await db.select({
+    video: feedbackVideos,
+    ownerName: users.name,
+    ownerEmail: users.email,
+  }).from(feedbackVideos)
+    .innerJoin(users, eq(feedbackVideos.ownerId, users.id))
+    .where(eq(feedbackVideos.isPublic, true))
+    .orderBy(desc(feedbackVideos.updatedAt));
+
+  const assignedIds = new Set(assigned.map((item) => item.video.id));
+  const queue = [
+    ...assigned.map((item) => ({ ...item, publicListing: false })),
+    ...publicVideos
+      .filter((item) => !assignedIds.has(item.video.id))
+      .map((item) => ({ ...item, seenAt: null, publicListing: true })),
+  ];
+
+  return NextResponse.json({ owned, assigned: queue });
 }
 
 export async function POST(request: Request) {

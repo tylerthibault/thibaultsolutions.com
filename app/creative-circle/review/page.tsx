@@ -32,6 +32,23 @@ export default async function FeedbackHome() {
     .where(eq(feedbackAssignments.reviewerUserId, current.id))
     .orderBy(desc(feedbackAssignments.createdAt));
 
+  const publicVideos = admin ? [] : await db.select({
+    video: feedbackVideos,
+    ownerName: users.name,
+    ownerEmail: users.email,
+  }).from(feedbackVideos)
+    .innerJoin(users, eq(feedbackVideos.ownerId, users.id))
+    .where(eq(feedbackVideos.isPublic, true))
+    .orderBy(desc(feedbackVideos.updatedAt));
+
+  const assignedIds = new Set(assigned.map((item) => item.video.id));
+  const reviewQueue = [
+    ...assigned.map((item) => ({ ...item, publicListing: false })),
+    ...publicVideos
+      .filter((item) => !assignedIds.has(item.video.id))
+      .map((item) => ({ ...item, seenAt: null, publicListing: true })),
+  ].sort((a, b) => new Date(b.video.updatedAt).getTime() - new Date(a.video.updatedAt).getTime());
+
   return <><CcNav userEmail={current.email}/><main className="cc-main">
     <section className="feedback-hero">
       <div>
@@ -40,7 +57,7 @@ export default async function FeedbackHome() {
         <p className="muted">
           {admin
             ? "Add a video, assign the people you want feedback from, and collect timestamped notes."
-            : "Watch the videos assigned to you and leave comments tied to exact moments. Commenter accounts cannot add or assign videos."}
+            : "Watch assigned videos and anything the admin marks public to commenters. Leave comments tied to exact moments; commenter accounts cannot add or assign videos."}
         </p>
         <div className="actions">
           {admin && <Link className="btn primary" href="/creative-circle/review/new">ADD VIDEO ↘</Link>}
@@ -57,7 +74,7 @@ export default async function FeedbackHome() {
             <b>03</b><span>COLLECT TIMESTAMPED NOTES</span>
             <b>04</b><span>REVISE + RESOLVE</span>
           </> : <>
-            <b>01</b><span>OPEN AN ASSIGNED VIDEO</span>
+            <b>01</b><span>OPEN AN AVAILABLE VIDEO</span>
             <b>02</b><span>PAUSE AT THE MOMENT</span>
             <b>03</b><span>LEAVE YOUR COMMENT</span>
             <b>04</b><span>MOVE TO THE NEXT NOTE</span>
@@ -78,11 +95,11 @@ export default async function FeedbackHome() {
 
     <section style={{ marginTop: admin ? 60 : 0 }}>
       <div className="section-head feedback-section-head"><div><span>{admin ? "02" : "01"} / WAITING FOR YOUR EYES</span><h2>REVIEW <b>QUEUE.</b></h2></div></div>
-      {assigned.length === 0
+      {reviewQueue.length === 0
         ? <div className="empty"><p>No videos are waiting for your feedback right now.</p></div>
-        : <div className="feedback-grid">{assigned.map(({ video, ownerName, seenAt }) => <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`} key={video.id}>
+        : <div className="feedback-grid">{reviewQueue.map(({ video, ownerName, seenAt, publicListing }) => <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`} key={video.id}>
             <div className="feedback-card-art"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong><small className="muted">FROM {ownerName.toUpperCase()}</small></div>
-            <div className="feedback-card-meta"><span>{seenAt ? "VIEWED" : "NEW"}</span><span>{new Date(video.updatedAt).toLocaleDateString()}</span></div>
+            <div className="feedback-card-meta"><span>{publicListing ? "PUBLIC" : seenAt ? "VIEWED" : "NEW"}</span><span>{new Date(video.updatedAt).toLocaleDateString()}</span></div>
           </Link>)}</div>}
     </section>
   </main></>;

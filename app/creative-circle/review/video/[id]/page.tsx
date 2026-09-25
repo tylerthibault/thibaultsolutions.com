@@ -7,6 +7,7 @@ import { parseFeedbackLink } from "@/src/lib/feedback-links";
 import { feedbackAssignments, feedbackComments, user as users } from "@/src/lib/schema";
 import { CcNav } from "@/src/components/CcNav";
 import { FeedbackReview } from "@/src/components/FeedbackReview";
+import { FeedbackVisibilityToggle } from "@/src/components/FeedbackVisibilityToggle";
 
 export default async function FeedbackVideoPage({ params }: { params: Promise<{ id: string }> }) {
   const current = await requireSectionUser("feedback");
@@ -31,7 +32,7 @@ export default async function FeedbackVideoPage({ params }: { params: Promise<{ 
     .where(eq(feedbackComments.videoId, id))
     .orderBy(asc(feedbackComments.createdAt));
 
-  if (access.role === "reviewer") {
+  if (access.role === "reviewer" && access.assignment) {
     await db.update(feedbackAssignments).set({ seenAt: new Date() }).where(eq(feedbackAssignments.id, access.assignment.id));
   }
 
@@ -39,7 +40,10 @@ export default async function FeedbackVideoPage({ params }: { params: Promise<{ 
   return <><CcNav userEmail={current.email}/><main className="cc-main feedback-review-shell">
     <div className="feedback-review-head">
       <div><span className="micro muted">{access.role === "owner" ? "YOUR VIDEO" : `FROM ${owner?.name ?? "YOUR CIRCLE"}`}</span><h1>{access.video.title}</h1></div>
-      <span className="micro" style={{ color: "var(--lime)" }}>{comments.filter((c) => !c.resolved).length} OPEN NOTES</span>
+      <div className="feedback-review-head-actions">
+        {access.role === "owner" && <FeedbackVisibilityToggle videoId={access.video.id} initialPublic={access.video.isPublic}/>} 
+        <span className="micro" style={{ color: "var(--lime)" }}>{comments.filter((c) => !c.resolved).length} OPEN NOTES</span>
+      </div>
     </div>
     <FeedbackReview
       video={{ id: access.video.id, sourceType: access.video.sourceType, sourceUrl: access.video.sourceUrl, provider: access.video.provider, durationMs: access.video.durationMs, embedUrl: linked?.embedUrl ?? null }}
