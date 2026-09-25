@@ -37,9 +37,17 @@ function platformEmbedUrl(video: Video) {
     }
 
     if (video.provider === "tiktok") {
-      // Use TikTok's own player controls. Do not hide them and then attempt to
-      // recreate playback with postMessage.
+      // Keep TikTok's native controls. We only use postMessage below to hold the
+      // current video before its end screen appears.
       url.search = "";
+      url.searchParams.set("controls", "1");
+      url.searchParams.set("progress_bar", "1");
+      url.searchParams.set("play_button", "1");
+      url.searchParams.set("volume_control", "1");
+      url.searchParams.set("fullscreen_button", "1");
+      url.searchParams.set("timestamp", "1");
+      url.searchParams.set("loop", "0");
+      url.searchParams.set("rel", "0");
     }
 
     return url.toString();
@@ -55,8 +63,11 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
   role: "owner" | "reviewer";
 }) {
   const player = useRef<HTMLVideoElement | null>(null);
+  const socialFrame = useRef<HTMLIFrameElement | null>(null);
   const commentInput = useRef<HTMLTextAreaElement | null>(null);
   const retryTimer = useRef<number | null>(null);
+  const tiktokDuration = useRef<number | null>(null);
+  const tiktokHeldAtEnd = useRef(false);
 
   const [comments, setComments] = useState(initialComments.map((c) => ({
     ...c,
@@ -145,6 +156,76 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
       }
     };
   }, [video.id, video.sourceType, playbackAttempt]);
+
+  useEffect(() => {
+    if (video.provider !== "tiktok") return;
+
+    const iframe = socialFrame.current;
+    if (!iframe) return;
+
+    const targetOrigin = "https://www.tiktok.com";
+
+    function send(type: "pause" | "play" | "seekTo", value?: number) {
+      iframe.contentWindow?.postMessage(
+        value === undefined
+          ? { type, "x-tiktok-player": true }
+          : { type, value, "x-tiktok-player": true },
+        targetOrigin,
+      );
+    }
+
+    function holdBeforeRecommendations(duration: number) {
+      const holdAt = Math.max(0, duration - 0.35);
+      send("pause");
+      send("seekTo", holdAt);
+      tiktokHeldAtEnd.current = true;
+    }
+
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== targetOrigin || event.source !== iframe.contentWindow) return;
+      const data = event.data;
+      if (!data || typeof data !== "object" || data["x-tiktok-player"] !== true) return;
+
+      if (data.type === "onCurrentTime" && data.value && typeof data.value === "object") {
+        const currentTime = Number(data.value.currentTime);
+        const duration = Number(data.value.duration);
+
+        if (Number.isFinite(duration) && duration > 0) {
+          tiktokDuration.current = duration;
+
+          if (Number.isFinite(currentTime) && currentTime < duration - 1) {
+            tiktokHeldAtEnd.current = false;
+          }
+
+          if (
+            Number.isFinite(currentTime) &&
+            !tiktokHeldAtEnd.current &&
+            currentTime >= duration - 0.45
+          ) {
+            holdBeforeRecommendations(duration);
+          }
+        }
+        return;
+      }
+
+      if (data.type === "onStateChange" && data.value === 0) {
+        const duration = tiktokDuration.current;
+        if (duration) holdBeforeRecommendations(duration);
+        return;
+      }
+
+      // If the viewer presses play while we're parked on the last frame, replay
+      // the same TikTok instead of allowing the recommendation screen to take over.
+      if (data.type === "onStateChange" && data.value === 1 && tiktokHeldAtEnd.current) {
+        tiktokHeldAtEnd.current = false;
+        send("seekTo", 0);
+        send("play");
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [video.provider, iframeSrc]);
 
   useEffect(() => {
     if (!composerOpen) return;
@@ -275,6 +356,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
           )
         ) : iframeSrc ? (
           <iframe
+            ref={socialFrame}
             className="feedback-social-frame"
             src={iframeSrc}
             title="Linked short"
