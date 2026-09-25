@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiUser } from "@/src/lib/api-auth";
+import { apiSessionUser } from "@/src/lib/api-auth";
 import { createAuth } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { circleInvitations, circleMemberships, user as users } from "@/src/lib/schema";
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   if (!invite) return NextResponse.json({ error: "Invitation not found." }, { status: 404 });
   if (invite.expiresAt.getTime() < Date.now()) return NextResponse.json({ error: "This invitation has expired." }, { status: 410 });
 
-  const sessionUser = await apiUser(request);
+  const sessionUser = await apiSessionUser(request);
   let memberId: string;
 
   if (sessionUser) {
@@ -54,6 +54,7 @@ export async function POST(request: Request) {
   }
 
   await db.insert(circleMemberships).values({ ownerId: invite.ownerId, memberUserId: memberId }).onConflictDoNothing();
+  await db.update(users).set({ creativeCircleAccess: true, updatedAt: new Date() }).where(eq(users.id, memberId));
   await db.update(circleInvitations).set({ acceptedAt: new Date() }).where(eq(circleInvitations.id, invite.id));
   return NextResponse.json({ ok: true, email: invite.email });
 }
