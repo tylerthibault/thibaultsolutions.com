@@ -161,12 +161,13 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
     if (video.provider !== "tiktok") return;
 
     const iframe = socialFrame.current;
-    if (!iframe) return;
+    const contentWindow = iframe?.contentWindow;
+    if (!iframe || !contentWindow) return;
 
     const targetOrigin = "https://www.tiktok.com";
 
     function send(type: "pause" | "play" | "seekTo", value?: number) {
-      iframe.contentWindow?.postMessage(
+      contentWindow.postMessage(
         value === undefined
           ? { type, "x-tiktok-player": true }
           : { type, value, "x-tiktok-player": true },
@@ -182,7 +183,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
     }
 
     function onMessage(event: MessageEvent) {
-      if (event.origin !== targetOrigin || event.source !== iframe.contentWindow) return;
+      if (event.origin !== targetOrigin || event.source !== contentWindow) return;
       const data = event.data;
       if (!data || typeof data !== "object" || data["x-tiktok-player"] !== true) return;
 
