@@ -183,3 +183,7 @@
 .feedback-card-thumb.square{aspect-ratio:1/1}
 .feedback-card-thumb.portrait img,.feedback-card-thumb.landscape img,.feedback-card-thumb.square img{object-fit:cover}
 .feedback-card-admin-wrap:has(.feedback-card-thumb.portrait),.feedback-card:has(.feedback-card-thumb.portrait){align-self:start}
+
+/* Keep portrait cards compact while still signaling vertical video. */
+.feedback-card-thumb.portrait{aspect-ratio:4/5;max-height:460px}
+@media(max-width:1100px){.feedback-card-thumb.portrait{aspect-ratio:3/4;max-height:420px}}
