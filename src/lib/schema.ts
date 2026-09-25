@@ -136,6 +136,19 @@ export const circleInvitations = pgTable("circle_invitations", {
   index("circle_invite_owner_idx").on(t.ownerId),
 ]);
 
+export const creativeCircleInvitations = pgTable("creative_circle_invitations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  adminId: text("admin_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("creative_circle_invite_email_unique").on(t.email),
+  index("creative_circle_invite_admin_idx").on(t.adminId),
+]);
+
 export const feedbackVideos = pgTable("feedback_videos", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
@@ -176,4 +189,4 @@ export const feedbackComments = pgTable("feedback_comments", {
   index("feedback_comment_video_idx").on(t.videoId, t.createdAt),
 ]);
 
-export const schema = { user, session, account, verification, mediaAssets, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, feedbackVideos, feedbackAssignments, feedbackComments };
+export const schema = { user, session, account, verification, mediaAssets, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, creativeCircleInvitations, feedbackVideos, feedbackAssignments, feedbackComments };

@@ -86,7 +86,9 @@ const signupLogin = await api("/api/auth/sign-in/email", {
 if (!signupLogin.response.ok) throw new Error(`Newly registered user could not sign in: ${signupLogin.response.status} ${signupLogin.text}`);
 const signupCookie = cookiesFrom(signupLogin.response);
 const signupProjects = await api("/api/projects", {}, signupCookie);
-if (!signupProjects.response.ok) throw new Error(`Newly registered user could not access authenticated projects API: ${signupProjects.response.status}`);
+if (signupProjects.response.status !== 401) {
+  throw new Error(`Expected newly registered user to require admin approval, got ${signupProjects.response.status}`);
+}
 
 const login = await api("/api/auth/sign-in/email", {
   method: "POST",
@@ -96,6 +98,20 @@ const login = await api("/api/auth/sign-in/email", {
 if (!login.response.ok) throw new Error(`Login failed: ${login.response.status} ${login.text}`);
 const cookie = cookiesFrom(login.response);
 if (!cookie) throw new Error("Login did not return a session cookie");
+
+const approved = await api("/api/creative-circle/admin/invitations", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email: signupEmail })
+}, cookie);
+if (approved.response.status !== 201 || approved.json?.memberAdded !== true) {
+  throw new Error(`Admin approval failed: ${approved.response.status} ${approved.text}`);
+}
+
+const approvedProjects = await api("/api/projects", {}, signupCookie);
+if (!approvedProjects.response.ok) {
+  throw new Error(`Approved user could not access projects API: ${approvedProjects.response.status}`);
+}
 
 const created = await api("/api/projects", {
   method: "POST",
@@ -191,5 +207,6 @@ console.log(JSON.stringify({
   output: `${exportRow.resolution} H.264/AAC`,
   bytes: bytes.length,
   effects: stack.map((effect) => effect.effectId),
-  pinSignup: true
+  pinSignup: true,
+  accessApproval: true
 }));

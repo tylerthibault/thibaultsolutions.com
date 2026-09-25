@@ -71,3 +71,17 @@
 .access-status.on{border-color:var(--lime);color:var(--lime);background:#0d1605}
 .access-status.off{color:var(--muted);background:#090c10}
 @media(max-width:700px){.access-admin-summary,.access-admin-row{align-items:stretch;flex-direction:column}.access-admin-search{max-width:none}.access-admin-controls{justify-content:space-between}.access-admin-controls .btn{flex:1}}
+
+.access-admin-stack{display:grid;gap:14px;margin-top:28px}
+.access-invite-panel{display:grid;gap:16px}
+.access-invite-panel h2{margin:7px 0;font-size:24px;letter-spacing:-.04em}
+.access-invite-panel p{margin:0;max-width:680px;font-size:11px;line-height:1.6}
+.access-invite-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.access-invite-link{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.access-pending{display:grid;gap:0;border-top:1px solid var(--line);padding-top:14px}
+.access-pending>.micro{margin-bottom:7px}
+.access-pending-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid var(--line)}
+.access-pending-row>div{display:grid;gap:3px;min-width:0}
+.access-pending-row strong{font-size:11px;overflow:hidden;text-overflow:ellipsis}
+.access-pending-row small{font-size:8px;color:var(--muted)}
+@media(max-width:700px){.access-invite-form,.access-invite-link{grid-template-columns:1fr}.access-pending-row{align-items:flex-start;flex-direction:column}.access-pending-row .tiny-btn{width:100%}}
