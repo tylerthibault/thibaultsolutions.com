@@ -7,6 +7,7 @@ import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { apiSectionUser } from "@/src/lib/api-auth";
+import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { feedbackVideos, mediaAssets } from "@/src/lib/schema";
 import { ensureStorage, fileSize, storagePath } from "@/src/lib/storage";
@@ -18,6 +19,10 @@ const allowed = new Map([["video/mp4", ".mp4"], ["video/quicktime", ".mov"], ["v
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const current = await apiSectionUser(request, "feedback");
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCreativeCircleAdmin(current.email)) {
+    return NextResponse.json({ error: "Only the Creative Circle admin can upload feedback videos." }, { status: 403 });
+  }
+
   const { id } = await ctx.params;
   const [video] = await db.select().from(feedbackVideos).where(and(eq(feedbackVideos.id, id), eq(feedbackVideos.ownerId, current.id))).limit(1);
   if (!video) return NextResponse.json({ error: "Feedback video not found." }, { status: 404 });

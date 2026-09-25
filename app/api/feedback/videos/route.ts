@@ -2,8 +2,9 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiSectionUser } from "@/src/lib/api-auth";
+import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { circleMemberships, feedbackAssignments, feedbackVideos, user as users } from "@/src/lib/schema";
+import { feedbackAssignments, feedbackVideos, user as users } from "@/src/lib/schema";
 import { parseFeedbackLink } from "@/src/lib/feedback-links";
 
 const createSchema = z.object({
@@ -17,9 +18,11 @@ export async function GET(request: Request) {
   const current = await apiSectionUser(request, "feedback");
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const owned = await db.select().from(feedbackVideos)
-    .where(eq(feedbackVideos.ownerId, current.id))
-    .orderBy(desc(feedbackVideos.updatedAt));
+  const owned = isCreativeCircleAdmin(current.email)
+    ? await db.select().from(feedbackVideos)
+        .where(eq(feedbackVideos.ownerId, current.id))
+        .orderBy(desc(feedbackVideos.updatedAt))
+    : [];
 
   const assigned = await db.select({
     video: feedbackVideos,
@@ -38,6 +41,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const current = await apiSectionUser(request, "feedback");
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCreativeCircleAdmin(current.email)) {
+    return NextResponse.json({ error: "Only the Creative Circle admin can add feedback videos." }, { status: 403 });
+  }
+
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Check the video title and source." }, { status: 400 });
 
@@ -60,10 +67,16 @@ export async function POST(request: Request) {
 
   const requested = [...new Set(parsed.data.reviewerIds)].filter((id) => id !== current.id);
   if (requested.length) {
-    const valid = await db.select({ id: circleMemberships.memberUserId }).from(circleMemberships)
-      .where(and(eq(circleMemberships.ownerId, current.id), inArray(circleMemberships.memberUserId, requested)));
+    const valid = await db.select({ id: users.id }).from(users)
+      .where(and(
+        inArray(users.id, requested),
+        eq(users.creativeCircleFeedbackAccess, true),
+      ));
+
     if (valid.length) {
-      await db.insert(feedbackAssignments).values(valid.map((member) => ({ videoId: video.id, reviewerUserId: member.id }))).onConflictDoNothing();
+      await db.insert(feedbackAssignments)
+        .values(valid.map((member) => ({ videoId: video.id, reviewerUserId: member.id })))
+        .onConflictDoNothing();
     }
   }
 

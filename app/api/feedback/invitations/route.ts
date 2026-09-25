@@ -3,6 +3,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiSectionUser } from "@/src/lib/api-auth";
+import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { circleInvitations, circleMemberships, user as users } from "@/src/lib/schema";
 
@@ -15,6 +16,7 @@ function tokenHash(token: string) {
 export async function GET(request: Request) {
   const owner = await apiSectionUser(request, "feedback");
   if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCreativeCircleAdmin(owner.email)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const members = await db.select({
     userId: users.id, name: users.name, email: users.email, createdAt: circleMemberships.createdAt,
@@ -35,6 +37,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const owner = await apiSectionUser(request, "feedback");
   if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCreativeCircleAdmin(owner.email)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const parsed = inviteSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   const email = parsed.data.email.toLowerCase();
