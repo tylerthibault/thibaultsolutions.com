@@ -1,1 +1,20 @@
-{"version":"7","dialect":"postgresql","entries":[{"idx":0,"version":"7","when":1789996800000,"tag":"0000_creative_circle","breakpoints":true}]}
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789996800000,
+      "tag": "0000_creative_circle",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790291100000,
+      "tag": "0001_feedback_room",
+      "breakpoints": true
+    }
+  ]
+}
