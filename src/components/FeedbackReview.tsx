@@ -135,9 +135,6 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
       }
     }
 
-    setTimelineReady(false);
-    setPlaybackStatus("checking");
-    setPlaybackDetail("");
     void check(true);
 
     return () => {
@@ -265,7 +262,12 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
               {(playbackStatus === "error" || playbackStatus === "missing") && <button
                 className="btn"
                 type="button"
-                onClick={() => setPlaybackAttempt((value) => value + 1)}
+                onClick={() => {
+                  setTimelineReady(false);
+                  setPlaybackStatus("checking");
+                  setPlaybackDetail("");
+                  setPlaybackAttempt((value) => value + 1);
+                }}
               >
                 RETRY
               </button>}
