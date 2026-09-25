@@ -25,3 +25,24 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const [updated] = await db.update(feedbackComments).set({ resolved: parsed.data.resolved, updatedAt: new Date() }).where(eq(feedbackComments.id, id)).returning();
   return NextResponse.json({ comment: updated });
 }
+
+
+export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const current = await apiSectionUser(request, "feedback");
+  if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCreativeCircleAdmin(current.email)) {
+    return NextResponse.json({ error: "Only the Creative Circle admin can delete comments." }, { status: 403 });
+  }
+
+  const { id } = await ctx.params;
+  const [comment] = await db.select().from(feedbackComments).where(eq(feedbackComments.id, id)).limit(1);
+  if (!comment) return NextResponse.json({ error: "Comment not found." }, { status: 404 });
+
+  const [video] = await db.select().from(feedbackVideos).where(eq(feedbackVideos.id, comment.videoId)).limit(1);
+  if (!video || video.ownerId !== current.id) {
+    return NextResponse.json({ error: "Only the video owner can delete comments." }, { status: 403 });
+  }
+
+  await db.delete(feedbackComments).where(eq(feedbackComments.id, id));
+  return NextResponse.json({ ok: true, id });
+}

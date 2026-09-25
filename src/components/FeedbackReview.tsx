@@ -288,6 +288,17 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
     setComments((current) => current.map((comment) => comment.id === commentId ? { ...comment, resolved } : comment));
   }
 
+  async function deleteComment(commentId: string) {
+    if (!window.confirm("Delete this comment permanently?")) return;
+
+    const response = await fetch(`/api/feedback/comments/${commentId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) return;
+
+    setComments((current) => current.filter((comment) => comment.id !== commentId));
+  }
+
   const open = comments.filter((comment) => !comment.resolved);
   const resolved = comments.filter((comment) => comment.resolved);
   const iframeSrc = video.provider === "youtube" ? youtubeEmbedUrl(video.embedUrl) : video.embedUrl;
@@ -378,12 +389,18 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
             <span>{comment.authorName}</span><time>{new Date(comment.createdAt).toLocaleString()}</time>
           </div>
           <p>{comment.body}</p>
-          {role === "owner" && <button className="tiny-btn resolve-btn" onClick={() => resolve(comment.id, true)}>✓ MARK RESOLVED</button>}
+          {role === "owner" && <div className="feedback-comment-admin-actions">
+            <button className="tiny-btn resolve-btn" onClick={() => resolve(comment.id, true)}>✓ MARK RESOLVED</button>
+            <button className="tiny-btn delete-comment-btn" onClick={() => deleteComment(comment.id)}>DELETE</button>
+          </div>}
         </article>)}
       </div>
       {resolved.length > 0 && <details className="resolved-notes"><summary>{resolved.length} RESOLVED NOTES</summary>{resolved.map((comment) => <article className="feedback-comment resolved" key={comment.id}>
         <div className="feedback-comment-top"><span className="timestamp-pill general">{timeLabel(comment.timestampMs)}</span><span>{comment.authorName}</span></div>
-        <p>{comment.body}</p>{role === "owner" && <button className="tiny-btn" onClick={() => resolve(comment.id, false)}>REOPEN</button>}
+        <p>{comment.body}</p>{role === "owner" && <div className="feedback-comment-admin-actions">
+          <button className="tiny-btn" onClick={() => resolve(comment.id, false)}>REOPEN</button>
+          <button className="tiny-btn delete-comment-btn" onClick={() => deleteComment(comment.id)}>DELETE</button>
+        </div>}
       </article>)}</details>}
       <div className="feedback-reviewer-id micro muted">SIGNED IN AS {currentUser.name.toUpperCase()}</div>
     </aside>
