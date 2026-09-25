@@ -43,6 +43,7 @@ export async function POST(request: Request) {
   const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (existing) {
     await db.insert(circleMemberships).values({ ownerId: owner.id, memberUserId: existing.id }).onConflictDoNothing();
+    await db.update(users).set({ creativeCircleAccess: true, updatedAt: new Date() }).where(eq(users.id, existing.id));
     return NextResponse.json({ memberAdded: true, member: { userId: existing.id, name: existing.name, email: existing.email } }, { status: 201 });
   }
 
