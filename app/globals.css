@@ -15,7 +15,12 @@
 .feedback-player iframe{width:100%;height:100%;min-height:620px;border:0;background:#000}
 .feedback-player-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .feedback-comment-trigger{min-width:180px}
-.feedback-comment-overlay{position:absolute;inset:0;z-index:10;display:grid;place-items:center;padding:24px;background:rgba(2,3,4,.68);backdrop-filter:blur(5px)}
+.feedback-paused-overlay{position:absolute;inset:0;z-index:9;display:grid;place-items:center;padding:24px;background:#030507}
+.feedback-resume-button{display:grid;place-items:center;gap:9px;min-width:150px;min-height:150px;padding:22px;border:1px solid #4a5665;border-radius:999px;background:#080c11;color:var(--ink);cursor:pointer;font:inherit;font-size:11px;font-weight:800;letter-spacing:.04em}
+.feedback-resume-button:hover{border-color:var(--lime);color:var(--lime)}
+.feedback-resume-icon{font-size:30px;line-height:1;margin-left:4px}
+.feedback-resume-button small{font-size:9px;color:var(--muted);font-weight:700}
+.feedback-comment-overlay{position:absolute;inset:0;z-index:10;display:grid;place-items:center;padding:24px;background:#030507}
 .feedback-comment-popover{width:min(560px,100%);display:grid;gap:14px;padding:20px;background:#0a0e13;border:1px solid #495463;border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.42)}
 .feedback-comment-popover-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .feedback-comment-popover-head>div{display:grid;gap:6px}
