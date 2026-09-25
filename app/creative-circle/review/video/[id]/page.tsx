@@ -8,6 +8,7 @@ import { feedbackAssignments, feedbackComments, feedbackViews, user as users } f
 import { CcNav } from "@/src/components/CcNav";
 import { FeedbackReview } from "@/src/components/FeedbackReview";
 import { FeedbackVisibilityToggle } from "@/src/components/FeedbackVisibilityToggle";
+import { DeleteFeedbackVideoButton } from "@/src/components/DeleteFeedbackVideoButton";
 
 export default async function FeedbackVideoPage({ params }: { params: Promise<{ id: string }> }) {
   const current = await requireSectionUser("feedback");
@@ -52,6 +53,7 @@ export default async function FeedbackVideoPage({ params }: { params: Promise<{ 
       <div><span className="micro muted">{access.role === "owner" ? "YOUR VIDEO" : `FROM ${owner?.name ?? "YOUR CIRCLE"}`}</span><h1>{access.video.title}</h1></div>
       <div className="feedback-review-head-actions">
         {access.role === "owner" && <FeedbackVisibilityToggle videoId={access.video.id} initialPublic={access.video.isPublic}/>} 
+        {access.role === "owner" && <DeleteFeedbackVideoButton videoId={access.video.id} returnTo="/creative-circle/review"/>} 
         <span className="micro" style={{ color: "var(--lime)" }}>{comments.filter((c) => !c.resolved).length} OPEN NOTES</span>
       </div>
     </div>

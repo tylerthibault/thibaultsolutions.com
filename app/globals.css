@@ -142,3 +142,12 @@
 .feedback-comment-admin-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .delete-comment-btn{color:#ff737d}
 .delete-comment-btn:hover{color:#ff9aa1}
+
+.feedback-card-admin-wrap{position:relative;min-width:0}
+.feedback-card-admin-wrap>.feedback-card{display:block;height:100%}
+.feedback-card-admin-wrap .feedback-delete-video.compact{position:absolute;right:10px;top:10px;z-index:4}
+.feedback-delete-video{display:grid;gap:4px;justify-items:end}
+.feedback-delete-video-btn{border:1px solid #6e2d34;background:#19090c;color:#ff7b84;border-radius:999px;padding:8px 11px;font:inherit;font-size:8px;font-weight:800;letter-spacing:.04em;cursor:pointer}
+.feedback-delete-video-btn:hover{border-color:#ff737d;background:#250d11;color:#ff9aa1}
+.feedback-delete-video-btn:disabled{opacity:.55;cursor:wait}
+.feedback-delete-video-btn.compact{padding:6px 8px;background:#0a0c10e8;backdrop-filter:blur(8px)}

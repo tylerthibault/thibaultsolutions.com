@@ -6,6 +6,7 @@ import { feedbackAssignments, feedbackVideos, feedbackViews, user as users } fro
 import { CcNav } from "@/src/components/CcNav";
 import { SignOutButton } from "@/src/components/SignOutButton";
 import { parseFeedbackLink, resolveFeedbackThumbnail } from "@/src/lib/feedback-links";
+import { DeleteFeedbackVideoButton } from "@/src/components/DeleteFeedbackVideoButton";
 
 async function thumbnailFor(video: typeof feedbackVideos.$inferSelect) {
   if (video.sourceType === "upload" && video.assetId) {
@@ -128,10 +129,14 @@ export default async function FeedbackHome() {
       <div className="section-head feedback-section-head"><div><span>01 / YOUR VIDEOS</span><h2>OUT FOR <b>REVIEW.</b></h2></div></div>
       {owned.length === 0
         ? <div className="empty"><p>No feedback videos yet.</p><Link className="btn primary" href="/creative-circle/review/new">ADD YOUR FIRST VIDEO</Link></div>
-        : <div className="feedback-grid">{owned.map((video) => <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`} key={video.id}>
-            <VideoThumb src={ownedThumbs.get(video.id) ?? null} title={video.title}/><div className="feedback-card-art compact"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong></div>
-            <div className="feedback-card-meta"><span>{video.status.toUpperCase()}</span><span>{new Date(video.updatedAt).toLocaleDateString()}</span></div>
-          </Link>)}</div>}
+        : <div className="feedback-grid">{owned.map((video) => <div className="feedback-card-admin-wrap" key={video.id}>
+            <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`}>
+              <VideoThumb src={ownedThumbs.get(video.id) ?? null} title={video.title}/>
+              <div className="feedback-card-art compact"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong></div>
+              <div className="feedback-card-meta"><span>{video.status.toUpperCase()}</span><span>{new Date(video.updatedAt).toLocaleDateString()}</span></div>
+            </Link>
+            <DeleteFeedbackVideoButton videoId={video.id} compact/>
+          </div>)}</div>}
     </>}
 
     <section style={{ marginTop: admin ? 60 : 0 }}>
