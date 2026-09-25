@@ -28,10 +28,11 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
     eq(feedbackVideos.ownerId, current.id),
   ));
 
-  // Clean up any interrupted chunked upload for this video.
+  // Clean up any interrupted upload and generated playback cache.
   await removeStored("temp", `${id}.upload`);
 
   if (assetId) {
+    await removeStored("renders", `${assetId}.feedback-browser.mp4`);
     const [otherFeedbackReference] = await db.select({ id: feedbackVideos.id })
       .from(feedbackVideos)
       .where(eq(feedbackVideos.assetId, assetId))

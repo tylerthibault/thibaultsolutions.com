@@ -1,5 +1,5 @@
 import { createWriteStream } from "node:fs";
-import { rename, stat, unlink } from "node:fs/promises";
+import { stat, unlink } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { randomUUID } from "node:crypto";
@@ -11,7 +11,7 @@ import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { feedbackVideos, mediaAssets } from "@/src/lib/schema";
 import { ensureStorage, fileSize, storagePath } from "@/src/lib/storage";
-import { makeThumbnail, probeVideo } from "@/src/lib/video";
+import { makeBrowserPlaybackCopy, makeThumbnail, probeVideo } from "@/src/lib/video";
 
 export const runtime = "nodejs";
 
@@ -119,10 +119,15 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       }, { status: 409 });
     }
 
-    const meta = await probeVideo(tempPath);
-    const key = `${randomUUID()}${ext}`;
+    const sourceMeta = await probeVideo(tempPath);
+    const key = `${randomUUID()}.mp4`;
     const finalPath = storagePath("uploads", key);
-    await rename(tempPath, finalPath);
+
+    // Normalize Feedback Lab uploads for browser playback. H.264 video is copied
+    // without re-encoding; HEVC/VP9/etc. are converted once to H.264. Audio is AAC.
+    await makeBrowserPlaybackCopy(tempPath, finalPath, sourceMeta.codec);
+    const meta = await probeVideo(finalPath);
+    await unlink(tempPath).catch(() => undefined);
 
     const thumbKey = `${randomUUID()}.jpg`;
     await makeThumbnail(finalPath, storagePath("thumbnails", thumbKey));
@@ -133,7 +138,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       originalName,
       storageKey: key,
       thumbnailKey: thumbKey,
-      mimeType: mime,
+      mimeType: "video/mp4",
       sizeBytes,
       ...meta,
     }).returning();

@@ -89,6 +89,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
   const [generalNote, setGeneralNote] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [playbackError, setPlaybackError] = useState("");
 
   const canControlPlayer = video.sourceType === "upload" || video.provider === "tiktok" || video.provider === "youtube";
   const canAutoTimestamp = canControlPlayer;
@@ -424,6 +425,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
               preload="metadata"
               src={`/api/feedback/videos/${video.id}/media`}
               onLoadedMetadata={(event) => {
+                setPlaybackError("");
                 const duration = event.currentTarget.duration;
                 if (Number.isFinite(duration) && duration > 0) {
                   setDurationMs(Math.round(duration * 1000));
@@ -436,6 +438,10 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onEnded={() => setIsPlaying(false)}
+              onError={() => {
+                setIsPlaying(false);
+                setPlaybackError("VIDEO COULD NOT LOAD · CHECK SERVER LOGS OR RE-UPLOAD");
+              }}
             />
           ) : iframeSrc ? (
             <iframe
@@ -450,7 +456,12 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
             <div className="empty">This linked video cannot be embedded.</div>
           )}
 
-          {canControlPlayer && !isPlaying && !composerOpen && <button
+          {playbackError && video.sourceType === "upload" && <div className="feedback-unified-paused" role="alert">
+            <span className="micro" style={{ color: "var(--lime)" }}>PLAYBACK ERROR</span>
+            <strong style={{ maxWidth: 300, textAlign: "center" }}>{playbackError}</strong>
+          </div>}
+
+          {canControlPlayer && !isPlaying && !composerOpen && !playbackError && <button
             className="feedback-unified-paused"
             type="button"
             onClick={togglePlayback}

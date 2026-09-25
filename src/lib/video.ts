@@ -56,4 +56,23 @@ export async function makeThumbnail(input: string, output: string) {
   await run(ffmpeg, ["-y", "-ss", "0.25", "-i", input, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2", "-q:v", "3", output]);
 }
 
+export async function makeBrowserPlaybackCopy(input: string, output: string, sourceCodec?: string) {
+  const codec = sourceCodec?.toLowerCase();
+  const videoArgs = codec === "h264"
+    ? ["-c:v", "copy"]
+    : ["-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"];
+
+  await run(ffmpeg, [
+    "-y",
+    "-i", input,
+    "-map", "0:v:0",
+    "-map", "0:a:0?",
+    ...videoArgs,
+    "-c:a", "aac",
+    "-b:a", "160k",
+    "-movflags", "+faststart",
+    output,
+  ]);
+}
+
 export function getFfmpegPath() { return ffmpeg; }
