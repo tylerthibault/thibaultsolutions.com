@@ -25,7 +25,7 @@ export default async function CreativeCircleAccessInvitePage({ params }: { param
     </section></main>;
   }
 
-  const sections = [invite.labAccess ? "Video Lab" : null, invite.feedbackAccess ? "Feedback Room" : null]
+  const sections = [invite.labAccess ? "Video Lab" : null, invite.feedbackAccess ? "Feedback Lab" : null]
     .filter(Boolean).join(" + ");
 
   return <main className="login-wrap"><section className="login-card">

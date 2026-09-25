@@ -76,7 +76,7 @@ export function NewFeedbackVideoForm({ reviewers }: { reviewers: Reviewer[] }) {
     </div>}
 
     <div>
-      <div className="feedback-form-label"><span className="micro">WHO SHOULD REVIEW IT?</span><a href="/creative-circle/review/reviewers">MANAGE REVIEWERS ↗</a></div>
+      <div className="feedback-form-label"><span className="micro">WHO SHOULD REVIEW IT?</span><a href="/creative-circle/review/reviewers">MANAGE COMMENTERS ↗</a></div>
       {reviewers.length === 0 ? <div className="empty"><p>Your circle is empty.</p><a className="btn" href="/creative-circle/review/reviewers">INVITE REVIEWERS</a></div> :
         <div className="reviewer-checks">{reviewers.map((reviewer) => <label key={reviewer.id} className={selected.includes(reviewer.id) ? "reviewer-check selected" : "reviewer-check"}>
           <input type="checkbox" checked={selected.includes(reviewer.id)} onChange={() => toggle(reviewer.id)}/>
@@ -87,7 +87,7 @@ export function NewFeedbackVideoForm({ reviewers }: { reviewers: Reviewer[] }) {
     {busy && sourceType === "upload" && <div><div className="progress"><i style={{ width: `${progress}%` }}/></div><small className="muted">Uploading {progress}%</small></div>}
     {error && <div className="error" role="alert">{error}</div>}
     <button className="btn primary" onClick={create} disabled={busy || !title.trim() || (sourceType === "upload" ? !file : !sourceUrl.trim())}>
-      {busy ? "ADDING TO ROOM…" : "SEND TO FEEDBACK ROOM ↘"}
+      {busy ? "ADDING TO ROOM…" : "SEND TO FEEDBACK LAB ↘"}
     </button>
   </div>;
 }

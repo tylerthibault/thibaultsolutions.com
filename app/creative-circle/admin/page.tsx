@@ -35,7 +35,7 @@ export default async function CreativeCircleAdminPage() {
       <span className="micro" style={{ color: "var(--lime)" }}>ADMIN / SECTION ACCESS</span>
       <h1 className="feedback-page-title">WHO GETS<br/><span>WHAT.</span></h1>
       <p className="muted" style={{ maxWidth: 720, lineHeight: 1.6 }}>
-        Creative Circle currently has two sections. Grant Video Lab, Feedback Room, or both for each member. Feedback Room access is commenter-only: members can watch assigned videos and leave notes, but only the admin can add or assign videos. Turning both off removes Creative Circle access without deleting their account or work.
+        Creative Circle currently has two sections. Grant Video Lab, Feedback Lab, or both for each member. Feedback Lab access is commenter-only: members can watch assigned videos and leave notes, but only the admin can add or assign videos. Turning both off removes Creative Circle access without deleting their account or work.
       </p>
       <AccessAdminPanel
         initialUsers={accounts.map((account) => ({ ...account, isAdmin: isCreativeCircleAdmin(account.email), createdAt: account.createdAt.toISOString() }))}

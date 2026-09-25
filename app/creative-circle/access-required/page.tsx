@@ -15,7 +15,7 @@ export default async function AccessRequiredPage() {
         You are signed in as <strong style={{ color: "var(--ink)" }}>{session.user.email}</strong>, but this account is not currently enabled for any Creative Circle sections.
       </p>
       <p className="muted" style={{ fontSize: 11, lineHeight: 1.6 }}>
-        Ask the Creative Circle admin to enable Video Lab, Feedback Room, or both, then refresh this page.
+        Ask the Creative Circle admin to enable Video Lab, Feedback Lab, or both, then refresh this page.
       </p>
       <div className="actions"><SignOutButton/></div>
     </section>

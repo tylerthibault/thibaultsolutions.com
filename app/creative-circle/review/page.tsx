@@ -93,7 +93,7 @@ export default async function FeedbackHome() {
   return <><CcNav userEmail={current.email}/><main className="cc-main">
     <section className="feedback-hero">
       <div>
-        <span className="micro" style={{ color: "var(--lime)" }}>FEEDBACK ROOM / PRIVATE REVIEW</span>
+        <span className="micro" style={{ color: "var(--lime)" }}>FEEDBACK LAB / PRIVATE REVIEW</span>
         <h1>{admin ? <>MAKE IT.<br/><em>BETTER.</em></> : <>YOUR<br/><em>REVIEW QUEUE.</em></>}</h1>
         <p className="muted">
           {admin

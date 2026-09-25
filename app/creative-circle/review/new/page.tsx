@@ -18,7 +18,7 @@ export default async function NewFeedbackVideoPage() {
     ));
 
   return <><CcNav userEmail={current.email}/><main className="cc-main" style={{ maxWidth: 980 }}>
-    <span className="micro" style={{ color: "var(--lime)" }}>FEEDBACK / NEW VIDEO</span>
+    <span className="micro" style={{ color: "var(--lime)" }}>FEEDBACK LAB / NEW VIDEO</span>
     <h1 className="feedback-page-title">PUT IT<br/>IN THE <span>ROOM.</span></h1>
     <NewFeedbackVideoForm reviewers={reviewers}/>
   </main></>;

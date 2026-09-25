@@ -146,7 +146,7 @@ export function AccessAdminPanel({ initialUsers, initialInvites }: { initialUser
           </label>
           <label className={inviteFeedback ? "access-section-choice selected" : "access-section-choice"}>
             <input type="checkbox" checked={inviteFeedback} onChange={(event) => setInviteFeedback(event.target.checked)}/>
-            <span><b>FEEDBACK ROOM</b><small>Watch assigned videos + leave comments</small></span>
+            <span><b>FEEDBACK LAB</b><small>Watch assigned videos + leave comments</small></span>
           </label>
         </div>
         <button className="btn primary" disabled={inviting || (!inviteLab && !inviteFeedback)}>
@@ -203,7 +203,7 @@ export function AccessAdminPanel({ initialUsers, initialInvites }: { initialUser
                   <span>VIDEO LAB</span><b>{user.labAccess ? "ON" : "OFF"}</b>
                 </button>
                 <button className={user.feedbackAccess ? "section-access-btn enabled" : "section-access-btn"} type="button" disabled={busyId === user.id} onClick={() => updateAccess(user.id, { feedbackAccess: !user.feedbackAccess })}>
-                  <span>FEEDBACK / COMMENTER</span><b>{user.feedbackAccess ? "ON" : "OFF"}</b>
+                  <span>FEEDBACK LAB / COMMENTER</span><b>{user.feedbackAccess ? "ON" : "OFF"}</b>
                 </button>
                 {hasAny && <button className="tiny-btn remove-all-access" type="button" disabled={busyId === user.id} onClick={() => updateAccess(user.id, { labAccess: false, feedbackAccess: false })}>REMOVE ALL</button>}
               </>}
