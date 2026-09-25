@@ -52,3 +52,22 @@
 .cc-user-email{max-width:180px;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:1050px){.feedback-hero,.feedback-manage-grid{grid-template-columns:1fr}.feedback-grid{grid-template-columns:1fr 1fr}.feedback-review-grid{grid-template-columns:1fr}.feedback-comments{max-height:600px}.feedback-player iframe{min-height:560px}}
 @media(max-width:700px){.feedback-grid,.reviewer-checks{grid-template-columns:1fr}.feedback-review-head{align-items:flex-start;flex-direction:column}.feedback-player{min-height:360px}.feedback-player iframe{min-height:520px}.feedback-player-actions{display:grid;grid-template-columns:1fr}.feedback-player-actions .btn{width:100%}.feedback-comment-overlay{padding:12px;align-items:end}.feedback-comment-popover{padding:16px}.feedback-composer-actions{display:grid;grid-template-columns:1fr}.feedback-composer-actions .btn{width:100%}.feedback-comment-top{grid-template-columns:auto 1fr}.feedback-comment-top time{grid-column:2}.cc-user-email{display:none}}
+
+.access-admin-panel{margin-top:28px;padding:0;overflow:hidden}
+.access-admin-summary{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px;border-bottom:1px solid var(--line)}
+.access-admin-summary>div{display:grid;gap:6px}
+.access-admin-summary strong{font-size:15px;color:var(--lime)}
+.access-admin-search{max-width:320px}
+.access-admin-message{padding:10px 18px;border-bottom:1px solid var(--line);font-size:10px}
+.access-admin-list{display:grid}
+.access-admin-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.access-admin-row:last-child{border-bottom:0}
+.access-admin-person{display:grid;gap:4px;min-width:0}
+.access-admin-person strong{font-size:13px}
+.access-admin-person span{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.access-admin-person small{font-size:8px;color:var(--muted)}
+.access-admin-controls{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.access-status{border:1px solid var(--line);border-radius:999px;padding:6px 9px;font-size:8px;font-weight:800;letter-spacing:.04em}
+.access-status.on{border-color:var(--lime);color:var(--lime);background:#0d1605}
+.access-status.off{color:var(--muted);background:#090c10}
+@media(max-width:700px){.access-admin-summary,.access-admin-row{align-items:stretch;flex-direction:column}.access-admin-search{max-width:none}.access-admin-controls{justify-content:space-between}.access-admin-controls .btn{flex:1}}
