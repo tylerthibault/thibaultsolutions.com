@@ -10,5 +10,5 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["scripts/worker.ts", "scripts/seed-owner.ts", "src/lib/schema.ts", "src/lib/effects/export.ts"]
+  "include": ["scripts/worker.ts", "scripts/migrate.ts", "scripts/seed-owner.ts", "src/lib/schema.ts", "src/lib/effects/export.ts"]
 }

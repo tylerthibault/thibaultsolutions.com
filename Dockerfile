@@ -35,4 +35,4 @@ RUN mkdir -p /data/uploads /data/renders /data/thumbnails /data/temp \
 
 USER node
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "node dist-worker/scripts/migrate.js && exec node server.js"]
