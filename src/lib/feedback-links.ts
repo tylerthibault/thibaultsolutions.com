@@ -18,7 +18,7 @@ export function parseFeedbackLink(raw: string): { provider: FeedbackProvider; ca
   if (host === "tiktok.com" || host === "m.tiktok.com") {
     const match = url.pathname.match(/\/video\/(\d+)/);
     if (!match) return null;
-    return { provider: "tiktok", canonicalUrl: `https://www.tiktok.com${url.pathname}`, embedUrl: `https://www.tiktok.com/player/v1/${match[1]}?loop=1` };
+    return { provider: "tiktok", canonicalUrl: `https://www.tiktok.com${url.pathname}`, embedUrl: `https://www.tiktok.com/player/v1/${match[1]}` };
   }
 
   if (host === "instagram.com") {
