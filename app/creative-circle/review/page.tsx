@@ -180,7 +180,7 @@ export default async function FeedbackHome() {
       <div className="section-head feedback-section-head"><div><span>01 / YOUR VIDEOS</span><h2>OUT FOR <b>REVIEW.</b></h2></div></div>
       {owned.length === 0
         ? <div className="empty"><p>No feedback videos yet.</p><Link className="btn primary" href="/creative-circle/review/new">ADD YOUR FIRST VIDEO</Link></div>
-        : <div className="feedback-grid">{owned.map((video) => <div className="feedback-card-admin-wrap" key={video.id}>
+        : <div className="feedback-grid">{owned.map((video) => <div className={`feedback-card-admin-wrap orientation-${orientations.get(video.id) ?? "landscape"}`} key={video.id}>
             <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`}>
               <VideoThumb src={ownedThumbs.get(video.id) ?? null} title={video.title} orientation={orientations.get(video.id) ?? "landscape"}/>
               <div className="feedback-card-art compact"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong></div>
@@ -194,7 +194,7 @@ export default async function FeedbackHome() {
       <div className="section-head feedback-section-head"><div><span>{admin ? "02" : "01"} / WAITING FOR YOUR EYES</span><h2>REVIEW <b>QUEUE.</b></h2></div></div>
       {reviewQueue.length === 0
         ? <div className="empty"><p>No videos are waiting for your feedback right now.</p></div>
-        : <div className="feedback-grid">{reviewQueue.map(({ video, ownerName, seenAt, publicListing }) => <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`} key={video.id}>
+        : <div className="feedback-grid">{reviewQueue.map(({ video, ownerName, seenAt, publicListing }) => <Link className={`feedback-card orientation-${orientations.get(video.id) ?? "landscape"}`} href={`/creative-circle/review/video/${video.id}`} key={video.id}>
             <VideoThumb src={queueThumbs.get(video.id) ?? null} title={video.title} orientation={orientations.get(video.id) ?? "landscape"}/>
             <div className="feedback-card-art compact"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong><small className="muted">FROM {ownerName.toUpperCase()}</small></div>
             <div className="feedback-card-meta">

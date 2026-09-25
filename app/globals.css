@@ -195,3 +195,46 @@
 .feedback-card-thumb.portrait img,.feedback-card-thumb.square img{object-fit:contain;background:#05070a}
 @media(max-width:1100px){.feedback-card-thumb{height:260px}}
 @media(max-width:700px){.feedback-card-thumb{height:220px}}
+
+/* Let Feedback Lab cards size themselves by media orientation instead of forcing equal columns. */
+.feedback-grid{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  gap:16px;
+}
+.feedback-grid>.feedback-card-admin-wrap,
+.feedback-grid>.feedback-card{
+  flex:0 0 auto;
+  width:var(--feedback-card-width,320px);
+  max-width:100%;
+}
+.feedback-card-admin-wrap>.feedback-card{width:100%}
+.feedback-grid>.orientation-portrait{--feedback-card-width:240px}
+.feedback-grid>.orientation-square{--feedback-card-width:320px}
+.feedback-grid>.orientation-landscape{--feedback-card-width:480px}
+.feedback-grid>.feedback-card.orientation-portrait{--feedback-card-width:240px}
+.feedback-grid>.feedback-card.orientation-square{--feedback-card-width:320px}
+.feedback-grid>.feedback-card.orientation-landscape{--feedback-card-width:480px}
+.feedback-card-thumb{width:100%}
+@media(max-width:1100px){
+  .feedback-grid>.orientation-portrait,
+  .feedback-grid>.feedback-card.orientation-portrait{--feedback-card-width:220px}
+  .feedback-grid>.orientation-square,
+  .feedback-grid>.feedback-card.orientation-square{--feedback-card-width:280px}
+  .feedback-grid>.orientation-landscape,
+  .feedback-grid>.feedback-card.orientation-landscape{--feedback-card-width:400px}
+}
+@media(max-width:700px){
+  .feedback-grid>.feedback-card-admin-wrap,
+  .feedback-grid>.feedback-card,
+  .feedback-grid>.orientation-portrait,
+  .feedback-grid>.orientation-square,
+  .feedback-grid>.orientation-landscape,
+  .feedback-grid>.feedback-card.orientation-portrait,
+  .feedback-grid>.feedback-card.orientation-square,
+  .feedback-grid>.feedback-card.orientation-landscape{
+    width:100%;
+    --feedback-card-width:100%;
+  }
+}
