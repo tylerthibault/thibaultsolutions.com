@@ -174,3 +174,12 @@
 .feedback-media-frame .feedback-comment-overlay{z-index:10}
 @media(max-width:1050px){.feedback-player{min-height:560px}.feedback-media-frame{max-height:68vh}.feedback-player iframe{min-height:0}}
 @media(max-width:700px){.feedback-player{padding:0;min-height:0}.feedback-media-frame{width:100%;max-height:none;border-radius:0}.feedback-custom-controls{grid-template-columns:auto auto minmax(80px,1fr) auto;gap:6px;padding:9px}.feedback-control-time{font-size:9px}}
+
+/* Preserve each video's native orientation on Feedback Lab cards. */
+.feedback-grid{align-items:start}
+.feedback-card-admin-wrap>.feedback-card{height:auto}
+.feedback-card-thumb.landscape{aspect-ratio:16/9}
+.feedback-card-thumb.portrait{aspect-ratio:9/16}
+.feedback-card-thumb.square{aspect-ratio:1/1}
+.feedback-card-thumb.portrait img,.feedback-card-thumb.landscape img,.feedback-card-thumb.square img{object-fit:cover}
+.feedback-card-admin-wrap:has(.feedback-card-thumb.portrait),.feedback-card:has(.feedback-card-thumb.portrait){align-self:start}

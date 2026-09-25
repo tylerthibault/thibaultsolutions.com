@@ -89,3 +89,52 @@ export async function resolveFeedbackThumbnail(link: ParsedFeedbackLink): Promis
 
   return null;
 }
+
+
+export type FeedbackOrientation = "portrait" | "landscape" | "square";
+
+function orientationFromDimensions(width: number, height: number): FeedbackOrientation | null {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  const ratio = width / height;
+  if (ratio < 0.9) return "portrait";
+  if (ratio > 1.1) return "landscape";
+  return "square";
+}
+
+export async function resolveFeedbackOrientation(link: ParsedFeedbackLink): Promise<FeedbackOrientation> {
+  if (link.provider === "tiktok") {
+    try {
+      const response = await fetch(
+        `https://www.tiktok.com/oembed?url=${encodeURIComponent(link.canonicalUrl)}`,
+        { signal: AbortSignal.timeout(4000), cache: "no-store" },
+      );
+      if (response.ok) {
+        const data = await response.json() as {
+          thumbnail_width?: unknown;
+          thumbnail_height?: unknown;
+          width?: unknown;
+          height?: unknown;
+        };
+        const width = Number(data.thumbnail_width ?? data.width ?? 0);
+        const height = Number(data.thumbnail_height ?? data.height ?? 0);
+        const detected = orientationFromDimensions(width, height);
+        if (detected) return detected;
+      }
+    } catch {
+      // Fall through to the provider default.
+    }
+    return "portrait";
+  }
+
+  if (link.provider === "instagram") {
+    return "portrait";
+  }
+
+  // Links accepted by this flow are primarily YouTube Shorts. If YouTube
+  // metadata is unavailable, keep the card in a portrait-friendly shape.
+  if (link.provider === "youtube") {
+    return "portrait";
+  }
+
+  return "landscape";
+}

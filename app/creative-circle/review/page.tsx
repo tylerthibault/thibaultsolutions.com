@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { isCreativeCircleAdmin, requireSectionUser } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { feedbackAssignments, feedbackVideos, feedbackViews, user as users } from "@/src/lib/schema";
+import { feedbackAssignments, feedbackVideos, feedbackViews, mediaAssets, user as users } from "@/src/lib/schema";
 import { CcNav } from "@/src/components/CcNav";
 import { SignOutButton } from "@/src/components/SignOutButton";
-import { parseFeedbackLink, resolveFeedbackThumbnail } from "@/src/lib/feedback-links";
+import { parseFeedbackLink, resolveFeedbackOrientation, resolveFeedbackThumbnail, type FeedbackOrientation } from "@/src/lib/feedback-links";
 import { DeleteFeedbackVideoButton } from "@/src/components/DeleteFeedbackVideoButton";
 
 async function thumbnailFor(video: typeof feedbackVideos.$inferSelect) {
@@ -26,9 +26,22 @@ async function thumbnailFor(video: typeof feedbackVideos.$inferSelect) {
   return thumbnail;
 }
 
-function VideoThumb({ src, title }: { src: string | null; title: string }) {
-  if (!src) return <div className="feedback-card-thumb fallback"><span>NO PREVIEW</span></div>;
-  return <div className="feedback-card-thumb"><img src={src} alt="" loading="lazy"/><span className="feedback-thumb-play">▶</span><span className="sr-only">{title}</span></div>;
+function VideoThumb({
+  src,
+  title,
+  orientation,
+}: {
+  src: string | null;
+  title: string;
+  orientation: FeedbackOrientation;
+}) {
+  const className = `feedback-card-thumb ${orientation}`;
+  if (!src) return <div className={`${className} fallback`}><span>NO PREVIEW</span></div>;
+  return <div className={className}>
+    <img src={src} alt="" loading="lazy"/>
+    <span className="feedback-thumb-play">▶</span>
+    <span className="sr-only">{title}</span>
+  </div>;
 }
 
 function SourceBadge({ type, provider }: { type: string; provider: string | null }) {
@@ -91,6 +104,44 @@ export default async function FeedbackHome() {
   const ownedThumbs = new Map(await Promise.all(owned.map(async (video) => [video.id, await thumbnailFor(video)] as const)));
   const queueThumbs = new Map(await Promise.all(reviewQueue.map(async ({ video }) => [video.id, await thumbnailFor(video)] as const)));
 
+  const allVideos = [
+    ...owned,
+    ...reviewQueue.map(({ video }) => video),
+  ];
+  const uniqueVideos = [...new Map(allVideos.map((video) => [video.id, video])).values()];
+  const assetIds = [...new Set(uniqueVideos.map((video) => video.assetId).filter((id): id is string => Boolean(id)))];
+  const assets = assetIds.length
+    ? await db.select({
+        id: mediaAssets.id,
+        width: mediaAssets.width,
+        height: mediaAssets.height,
+      }).from(mediaAssets).where(inArray(mediaAssets.id, assetIds))
+    : [];
+  const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
+
+  async function orientationFor(video: typeof feedbackVideos.$inferSelect): Promise<FeedbackOrientation> {
+    if (video.sourceType === "upload" && video.assetId) {
+      const asset = assetsById.get(video.assetId);
+      if (asset) {
+        const ratio = asset.width / asset.height;
+        if (ratio < 0.9) return "portrait";
+        if (ratio > 1.1) return "landscape";
+        return "square";
+      }
+    }
+
+    if (video.sourceUrl) {
+      const linked = parseFeedbackLink(video.sourceUrl);
+      if (linked) return resolveFeedbackOrientation(linked);
+    }
+
+    return video.provider === "tiktok" || video.provider === "instagram" ? "portrait" : "landscape";
+  }
+
+  const orientations = new Map(await Promise.all(
+    uniqueVideos.map(async (video) => [video.id, await orientationFor(video)] as const),
+  ));
+
   return <><CcNav userEmail={current.email}/><main className="cc-main">
     <section className="feedback-hero">
       <div>
@@ -131,7 +182,7 @@ export default async function FeedbackHome() {
         ? <div className="empty"><p>No feedback videos yet.</p><Link className="btn primary" href="/creative-circle/review/new">ADD YOUR FIRST VIDEO</Link></div>
         : <div className="feedback-grid">{owned.map((video) => <div className="feedback-card-admin-wrap" key={video.id}>
             <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`}>
-              <VideoThumb src={ownedThumbs.get(video.id) ?? null} title={video.title}/>
+              <VideoThumb src={ownedThumbs.get(video.id) ?? null} title={video.title} orientation={orientations.get(video.id) ?? "landscape"}/>
               <div className="feedback-card-art compact"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong></div>
               <div className="feedback-card-meta"><span>{video.status.toUpperCase()}</span><span>{new Date(video.updatedAt).toLocaleDateString()}</span></div>
             </Link>
@@ -144,7 +195,7 @@ export default async function FeedbackHome() {
       {reviewQueue.length === 0
         ? <div className="empty"><p>No videos are waiting for your feedback right now.</p></div>
         : <div className="feedback-grid">{reviewQueue.map(({ video, ownerName, seenAt, publicListing }) => <Link className="feedback-card" href={`/creative-circle/review/video/${video.id}`} key={video.id}>
-            <VideoThumb src={queueThumbs.get(video.id) ?? null} title={video.title}/>
+            <VideoThumb src={queueThumbs.get(video.id) ?? null} title={video.title} orientation={orientations.get(video.id) ?? "landscape"}/>
             <div className="feedback-card-art compact"><SourceBadge type={video.sourceType} provider={video.provider}/><strong>{video.title}</strong><small className="muted">FROM {ownerName.toUpperCase()}</small></div>
             <div className="feedback-card-meta">
               <span className={seenAt ? "feedback-seen viewed" : "feedback-seen new"}>{seenAt ? "✓ VIEWED" : "● NEW / UNSEEN"}</span>
