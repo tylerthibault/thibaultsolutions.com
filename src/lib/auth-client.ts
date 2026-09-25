@@ -1,3 +1,8 @@
 "use client";
 import { createAuthClient } from "better-auth/react";
-export const authClient = createAuthClient({ baseURL: typeof window === "undefined" ? undefined : window.location.origin });
+import { usernameClient } from "better-auth/client/plugins";
+
+export const authClient = createAuthClient({
+  baseURL: typeof window === "undefined" ? undefined : window.location.origin,
+  plugins: [usernameClient({ displayUsername: false })],
+});

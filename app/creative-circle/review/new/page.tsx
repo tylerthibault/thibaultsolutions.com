@@ -10,12 +10,18 @@ export default async function NewFeedbackVideoPage() {
   const current = await requireSectionUser("feedback");
   if (!isCreativeCircleAdmin(current.email)) redirect("/creative-circle/review");
 
-  const reviewers = await db.select({ id: users.id, name: users.name, email: users.email })
+  const reviewerRows = await db.select({ id: users.id, name: users.name, email: users.email, username: users.username })
     .from(users)
     .where(and(
       eq(users.creativeCircleFeedbackAccess, true),
       ne(users.id, current.id),
     ));
+
+  const reviewers = reviewerRows.map((reviewer) => ({
+    id: reviewer.id,
+    name: reviewer.name,
+    email: reviewer.username ? `@${reviewer.username}` : reviewer.email,
+  }));
 
   return <><CcNav userEmail={current.email}/><main className="cc-main" style={{ maxWidth: 980 }}>
     <span className="micro" style={{ color: "var(--lime)" }}>FEEDBACK LAB / NEW VIDEO</span>

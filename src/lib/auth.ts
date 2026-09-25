@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth/minimal";
+import { username } from "better-auth/plugins";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -15,6 +16,15 @@ export function createAuth(disableSignUp = true) {
     secret: process.env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, { provider: "pg", schema }),
     emailAndPassword: { enabled: true, disableSignUp, minPasswordLength: 12 },
+    disabledPaths: ["/is-username-available"],
+    plugins: [
+      username({
+        displayUsername: false,
+        immutableUsername: true,
+        minUsernameLength: 3,
+        maxUsernameLength: 30,
+      }),
+    ],
     advanced: { trustedProxyHeaders: true, useSecureCookies: process.env.NODE_ENV === "production" }
   });
 }

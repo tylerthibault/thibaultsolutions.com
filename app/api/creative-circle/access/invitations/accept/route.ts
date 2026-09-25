@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiSessionUser } from "@/src/lib/api-auth";
@@ -16,6 +16,9 @@ const schema = z.object({
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
+function inviteLabel(invite: { email: string; username: string | null }) {
+  return invite.username ? `@${invite.username}` : invite.email;
+}
 
 export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
@@ -31,28 +34,47 @@ export async function POST(request: Request) {
   let memberId: string;
 
   if (sessionUser) {
-    if (sessionUser.email.toLowerCase() !== invite.email.toLowerCase()) {
-      return NextResponse.json({ error: `This invitation is for ${invite.email}.` }, { status: 403 });
+    const [identity] = await db.select({ email: users.email, username: users.username })
+      .from(users).where(eq(users.id, sessionUser.id)).limit(1);
+    const matches = invite.username
+      ? identity?.username === invite.username
+      : identity?.email.toLowerCase() === invite.email.toLowerCase();
+    if (!matches) {
+      return NextResponse.json({ error: `This invitation is for ${inviteLabel(invite)}.` }, { status: 403 });
     }
     memberId = sessionUser.id;
   } else {
-    const [existing] = await db.select().from(users).where(eq(users.email, invite.email)).limit(1);
+    const existingWhere = invite.username
+      ? or(eq(users.username, invite.username), eq(users.email, invite.email))
+      : eq(users.email, invite.email);
+    const [existing] = await db.select().from(users).where(existingWhere).limit(1);
     if (existing) {
-      return NextResponse.json({ error: "An account already exists for this email. Sign in, then open the invitation again.", code: "ACCOUNT_EXISTS" }, { status: 409 });
+      return NextResponse.json({
+        error: `An account already exists for ${inviteLabel(invite)}. Sign in, then open the invitation again.`,
+        code: "ACCOUNT_EXISTS",
+      }, { status: 409 });
     }
+
     if (!parsed.data.name || !parsed.data.password) {
       return NextResponse.json({ error: "Name and password are required to create your account." }, { status: 400 });
     }
 
     const signupAuth = createAuth(false);
     try {
-      await signupAuth.api.signUpEmail({ body: { name: parsed.data.name, email: invite.email, password: parsed.data.password } });
+      await signupAuth.api.signUpEmail({
+        body: {
+          name: parsed.data.name,
+          email: invite.email,
+          password: parsed.data.password,
+          username: invite.username ?? undefined,
+        },
+      });
     } catch (error) {
       console.error("Creative Circle access invite signup failed", error);
       return NextResponse.json({ error: "Could not create the account." }, { status: 500 });
     }
 
-    const [created] = await db.select().from(users).where(eq(users.email, invite.email)).limit(1);
+    const [created] = await db.select().from(users).where(existingWhere).limit(1);
     if (!created) return NextResponse.json({ error: "Account creation did not complete." }, { status: 500 });
     memberId = created.id;
   }
@@ -73,5 +95,5 @@ export async function POST(request: Request) {
   }).where(eq(users.id, memberId));
   await db.update(creativeCircleInvitations).set({ acceptedAt: new Date() }).where(eq(creativeCircleInvitations.id, invite.id));
 
-  return NextResponse.json({ ok: true, email: invite.email, access: { labAccess, feedbackAccess } });
+  return NextResponse.json({ ok: true, identifier: inviteLabel(invite), access: { labAccess, feedbackAccess } });
 }
