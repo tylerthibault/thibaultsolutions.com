@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   }
 
   await db.insert(circleMemberships).values({ ownerId: invite.ownerId, memberUserId: memberId }).onConflictDoNothing();
-  await db.update(users).set({ creativeCircleAccess: true, updatedAt: new Date() }).where(eq(users.id, memberId));
+  await db.update(users).set({ creativeCircleAccess: true, creativeCircleFeedbackAccess: true, updatedAt: new Date() }).where(eq(users.id, memberId));
   await db.update(circleInvitations).set({ acceptedAt: new Date() }).where(eq(circleInvitations.id, invite.id));
   return NextResponse.json({ ok: true, email: invite.email });
 }

@@ -1,12 +1,12 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { requireUser } from "@/src/lib/auth";
+import { requireSectionUser } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { circleInvitations, circleMemberships, user as users } from "@/src/lib/schema";
 import { CcNav } from "@/src/components/CcNav";
 import { ReviewersPanel } from "@/src/components/ReviewersPanel";
 
 export default async function ReviewersPage() {
-  const current = await requireUser();
+  const current = await requireSectionUser("feedback");
   const members = await db.select({
     userId: users.id,
     name: users.name,

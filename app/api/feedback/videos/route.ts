@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiUser } from "@/src/lib/api-auth";
+import { apiSectionUser } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
 import { circleMemberships, feedbackAssignments, feedbackVideos, user as users } from "@/src/lib/schema";
 import { parseFeedbackLink } from "@/src/lib/feedback-links";
@@ -14,7 +14,7 @@ const createSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const current = await apiUser(request);
+  const current = await apiSectionUser(request, "feedback");
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const owned = await db.select().from(feedbackVideos)
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const current = await apiUser(request);
+  const current = await apiSectionUser(request, "feedback");
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Check the video title and source." }, { status: 400 });

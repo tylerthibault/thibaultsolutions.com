@@ -2,7 +2,7 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { eq } from "drizzle-orm";
-import { apiUser } from "@/src/lib/api-auth";
+import { apiSectionUser } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
 import { getFeedbackVideoAccess } from "@/src/lib/feedback-access";
 import { mediaAssets } from "@/src/lib/schema";
@@ -11,7 +11,7 @@ import { storagePath } from "@/src/lib/storage";
 export const runtime = "nodejs";
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const current = await apiUser(request);
+  const current = await apiSectionUser(request, "feedback");
   if (!current) return new Response("Unauthorized", { status: 401 });
   const { id } = await ctx.params;
   const access = await getFeedbackVideoAccess(id, current.id);

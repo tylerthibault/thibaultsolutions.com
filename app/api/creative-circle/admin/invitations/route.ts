@@ -7,7 +7,11 @@ import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { creativeCircleInvitations, user as users } from "@/src/lib/schema";
 
-const inviteSchema = z.object({ email: z.string().trim().email().max(254) });
+const inviteSchema = z.object({
+  email: z.string().trim().email().max(254),
+  labAccess: z.boolean().default(true),
+  feedbackAccess: z.boolean().default(true),
+}).refine((value) => value.labAccess || value.feedbackAccess, { message: "Choose at least one section." });
 const deleteSchema = z.object({ id: z.string().uuid() });
 
 function hashToken(token: string) {
@@ -25,9 +29,12 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const parsed = inviteSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Enter an email and choose at least one section." }, { status: 400 });
 
   const email = parsed.data.email.toLowerCase();
+  const requestedLab = parsed.data.labAccess;
+  const requestedFeedback = parsed.data.feedbackAccess;
+
   if (email === admin.email.toLowerCase()) {
     return NextResponse.json({ error: "That account is already the Creative Circle admin." }, { status: 400 });
   }
@@ -36,33 +43,37 @@ export async function POST(request: Request) {
     id: users.id,
     name: users.name,
     email: users.email,
+    labAccess: users.creativeCircleLabAccess,
+    feedbackAccess: users.creativeCircleFeedbackAccess,
     createdAt: users.createdAt,
   }).from(users).where(eq(users.email, email)).limit(1);
 
   if (existing) {
-    await db.update(users)
-      .set({ creativeCircleAccess: true, updatedAt: new Date() })
-      .where(eq(users.id, existing.id));
+    const labAccess = existing.labAccess || requestedLab;
+    const feedbackAccess = existing.feedbackAccess || requestedFeedback;
+    await db.update(users).set({
+      creativeCircleAccess: labAccess || feedbackAccess,
+      creativeCircleLabAccess: labAccess,
+      creativeCircleFeedbackAccess: feedbackAccess,
+      updatedAt: new Date(),
+    }).where(eq(users.id, existing.id));
     await db.delete(creativeCircleInvitations).where(eq(creativeCircleInvitations.email, email));
 
     return NextResponse.json({
       memberAdded: true,
-      account: {
-        ...existing,
-        createdAt: existing.createdAt.toISOString(),
-        creativeCircleAccess: true,
-      },
+      account: { ...existing, labAccess, feedbackAccess, createdAt: existing.createdAt.toISOString() },
     }, { status: 201 });
   }
 
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-
   const [invitation] = await db.insert(creativeCircleInvitations).values({
     adminId: admin.id,
     email,
     tokenHash: hashToken(token),
     expiresAt,
+    labAccess: requestedLab,
+    feedbackAccess: requestedFeedback,
   }).onConflictDoUpdate({
     target: creativeCircleInvitations.email,
     set: {
@@ -70,22 +81,22 @@ export async function POST(request: Request) {
       tokenHash: hashToken(token),
       expiresAt,
       acceptedAt: null,
+      labAccess: requestedLab,
+      feedbackAccess: requestedFeedback,
       createdAt: new Date(),
     },
   }).returning({
     id: creativeCircleInvitations.id,
     email: creativeCircleInvitations.email,
+    labAccess: creativeCircleInvitations.labAccess,
+    feedbackAccess: creativeCircleInvitations.feedbackAccess,
     expiresAt: creativeCircleInvitations.expiresAt,
     createdAt: creativeCircleInvitations.createdAt,
   });
 
   const origin = process.env.APP_URL || new URL(request.url).origin;
   return NextResponse.json({
-    invitation: {
-      ...invitation,
-      expiresAt: invitation.expiresAt.toISOString(),
-      createdAt: invitation.createdAt.toISOString(),
-    },
+    invitation: { ...invitation, expiresAt: invitation.expiresAt.toISOString(), createdAt: invitation.createdAt.toISOString() },
     inviteUrl: `${origin}/creative-circle/access/invite/${token}`,
   }, { status: 201 });
 }
@@ -102,6 +113,5 @@ export async function DELETE(request: Request) {
     eq(creativeCircleInvitations.adminId, admin.id),
     isNull(creativeCircleInvitations.acceptedAt),
   ));
-
   return NextResponse.json({ ok: true });
 }

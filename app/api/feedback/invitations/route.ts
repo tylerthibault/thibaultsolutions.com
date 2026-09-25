@@ -2,7 +2,7 @@ import { randomBytes, createHash } from "node:crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiUser } from "@/src/lib/api-auth";
+import { apiSectionUser } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
 import { circleInvitations, circleMemberships, user as users } from "@/src/lib/schema";
 
@@ -13,7 +13,7 @@ function tokenHash(token: string) {
 }
 
 export async function GET(request: Request) {
-  const owner = await apiUser(request);
+  const owner = await apiSectionUser(request, "feedback");
   if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const members = await db.select({
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const owner = await apiUser(request);
+  const owner = await apiSectionUser(request, "feedback");
   if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const parsed = inviteSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (existing) {
     await db.insert(circleMemberships).values({ ownerId: owner.id, memberUserId: existing.id }).onConflictDoNothing();
-    await db.update(users).set({ creativeCircleAccess: true, updatedAt: new Date() }).where(eq(users.id, existing.id));
+    await db.update(users).set({ creativeCircleAccess: true, creativeCircleFeedbackAccess: true, updatedAt: new Date() }).where(eq(users.id, existing.id));
     return NextResponse.json({ memberAdded: true, member: { userId: existing.id, name: existing.name, email: existing.email } }, { status: 201 });
   }
 

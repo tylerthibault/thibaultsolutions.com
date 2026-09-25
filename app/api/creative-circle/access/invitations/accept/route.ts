@@ -21,17 +21,11 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid invitation request." }, { status: 400 });
 
-  const [invite] = await db.select()
-    .from(creativeCircleInvitations)
-    .where(eq(creativeCircleInvitations.tokenHash, hashToken(parsed.data.token)))
-    .limit(1);
+  const [invite] = await db.select().from(creativeCircleInvitations)
+    .where(eq(creativeCircleInvitations.tokenHash, hashToken(parsed.data.token))).limit(1);
 
-  if (!invite || invite.acceptedAt) {
-    return NextResponse.json({ error: "This invitation is no longer available." }, { status: 404 });
-  }
-  if (invite.expiresAt.getTime() < Date.now()) {
-    return NextResponse.json({ error: "This invitation has expired." }, { status: 410 });
-  }
+  if (!invite || invite.acceptedAt) return NextResponse.json({ error: "This invitation is no longer available." }, { status: 404 });
+  if (invite.expiresAt.getTime() < Date.now()) return NextResponse.json({ error: "This invitation has expired." }, { status: 410 });
 
   const sessionUser = await apiSessionUser(request);
   let memberId: string;
@@ -44,21 +38,15 @@ export async function POST(request: Request) {
   } else {
     const [existing] = await db.select().from(users).where(eq(users.email, invite.email)).limit(1);
     if (existing) {
-      return NextResponse.json({
-        error: "An account already exists for this email. Sign in, then open the invitation again.",
-        code: "ACCOUNT_EXISTS",
-      }, { status: 409 });
+      return NextResponse.json({ error: "An account already exists for this email. Sign in, then open the invitation again.", code: "ACCOUNT_EXISTS" }, { status: 409 });
     }
-
     if (!parsed.data.name || !parsed.data.password) {
       return NextResponse.json({ error: "Name and password are required to create your account." }, { status: 400 });
     }
 
     const signupAuth = createAuth(false);
     try {
-      await signupAuth.api.signUpEmail({
-        body: { name: parsed.data.name, email: invite.email, password: parsed.data.password },
-      });
+      await signupAuth.api.signUpEmail({ body: { name: parsed.data.name, email: invite.email, password: parsed.data.password } });
     } catch (error) {
       console.error("Creative Circle access invite signup failed", error);
       return NextResponse.json({ error: "Could not create the account." }, { status: 500 });
@@ -69,12 +57,21 @@ export async function POST(request: Request) {
     memberId = created.id;
   }
 
-  await db.update(users)
-    .set({ creativeCircleAccess: true, updatedAt: new Date() })
-    .where(eq(users.id, memberId));
-  await db.update(creativeCircleInvitations)
-    .set({ acceptedAt: new Date() })
-    .where(eq(creativeCircleInvitations.id, invite.id));
+  const [current] = await db.select({
+    labAccess: users.creativeCircleLabAccess,
+    feedbackAccess: users.creativeCircleFeedbackAccess,
+  }).from(users).where(eq(users.id, memberId)).limit(1);
 
-  return NextResponse.json({ ok: true, email: invite.email });
+  const labAccess = Boolean(current?.labAccess || invite.labAccess);
+  const feedbackAccess = Boolean(current?.feedbackAccess || invite.feedbackAccess);
+
+  await db.update(users).set({
+    creativeCircleAccess: labAccess || feedbackAccess,
+    creativeCircleLabAccess: labAccess,
+    creativeCircleFeedbackAccess: feedbackAccess,
+    updatedAt: new Date(),
+  }).where(eq(users.id, memberId));
+  await db.update(creativeCircleInvitations).set({ acceptedAt: new Date() }).where(eq(creativeCircleInvitations.id, invite.id));
+
+  return NextResponse.json({ ok: true, email: invite.email, access: { labAccess, feedbackAccess } });
 }

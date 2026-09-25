@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
-import { requireUser } from "@/src/lib/auth";
+import { requireSectionUser } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { getFeedbackVideoAccess } from "@/src/lib/feedback-access";
 import { parseFeedbackLink } from "@/src/lib/feedback-links";
@@ -9,7 +9,7 @@ import { CcNav } from "@/src/components/CcNav";
 import { FeedbackReview } from "@/src/components/FeedbackReview";
 
 export default async function FeedbackVideoPage({ params }: { params: Promise<{ id: string }> }) {
-  const current = await requireUser();
+  const current = await requireSectionUser("feedback");
   const { id } = await params;
   const access = await getFeedbackVideoAccess(id, current.id);
   if (!access) notFound();

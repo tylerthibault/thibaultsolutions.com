@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiUser } from "@/src/lib/api-auth";
+import { apiSectionUser } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
 import { getFeedbackVideoAccess } from "@/src/lib/feedback-access";
 import { feedbackAssignments, feedbackComments, user as users } from "@/src/lib/schema";
@@ -30,7 +30,7 @@ async function commentsFor(videoId: string) {
 }
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const current = await apiUser(request);
+  const current = await apiSectionUser(request, "feedback");
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   const access = await getFeedbackVideoAccess(id, current.id);
@@ -43,7 +43,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
 }
 
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const current = await apiUser(request);
+  const current = await apiSectionUser(request, "feedback");
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   const access = await getFeedbackVideoAccess(id, current.id);

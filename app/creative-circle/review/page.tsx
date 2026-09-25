@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
-import { requireUser } from "@/src/lib/auth";
+import { requireSectionUser } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { feedbackAssignments, feedbackVideos, user as users } from "@/src/lib/schema";
 import { CcNav } from "@/src/components/CcNav";
@@ -12,7 +12,7 @@ function SourceBadge({ type, provider }: { type: string; provider: string | null
 }
 
 export default async function FeedbackHome() {
-  const current = await requireUser();
+  const current = await requireSectionUser("feedback");
   const owned = await db.select().from(feedbackVideos)
     .where(eq(feedbackVideos.ownerId, current.id))
     .orderBy(desc(feedbackVideos.updatedAt));

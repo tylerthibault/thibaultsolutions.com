@@ -1,4 +1,4 @@
-import { requireUser } from "@/src/lib/auth";
+import { requireSectionUser } from "@/src/lib/auth";
 import { CcNav } from "@/src/components/CcNav";
 import { NewProjectForm } from "@/src/components/NewProjectForm";
-export default async function NewProject(){const user=await requireUser();return <><CcNav userEmail={user.email}/><main className="cc-main" style={{maxWidth:900}}><span className="micro" style={{color:"var(--lime)"}}>NEW / PROJECT</span><h1 style={{fontSize:"clamp(56px,8vw,105px)",lineHeight:.8,letterSpacing:"-.07em",margin:"16px 0 38px"}}>START WITH<br/>THE <span style={{color:"var(--blue)"}}>FOOTAGE.</span></h1><NewProjectForm/></main></>}
+export default async function NewProject(){const user=await requireSectionUser("lab");return <><CcNav userEmail={user.email}/><main className="cc-main" style={{maxWidth:900}}><span className="micro" style={{color:"var(--lime)"}}>NEW / PROJECT</span><h1 style={{fontSize:"clamp(56px,8vw,105px)",lineHeight:.8,letterSpacing:"-.07em",margin:"16px 0 38px"}}>START WITH<br/>THE <span style={{color:"var(--blue)"}}>FOOTAGE.</span></h1><NewProjectForm/></main></>}

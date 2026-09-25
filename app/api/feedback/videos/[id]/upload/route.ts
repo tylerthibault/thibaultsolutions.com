@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { apiUser } from "@/src/lib/api-auth";
+import { apiSectionUser } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
 import { feedbackVideos, mediaAssets } from "@/src/lib/schema";
 import { ensureStorage, fileSize, storagePath } from "@/src/lib/storage";
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 const allowed = new Map([["video/mp4", ".mp4"], ["video/quicktime", ".mov"], ["video/x-m4v", ".m4v"], ["video/webm", ".webm"]]);
 
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const current = await apiUser(request);
+  const current = await apiSectionUser(request, "feedback");
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   const [video] = await db.select().from(feedbackVideos).where(and(eq(feedbackVideos.id, id), eq(feedbackVideos.ownerId, current.id))).limit(1);

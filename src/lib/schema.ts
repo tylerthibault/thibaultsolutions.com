@@ -7,6 +7,8 @@ export const user = pgTable("user", {
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
   creativeCircleAccess: boolean("creative_circle_access").notNull().default(false),
+  creativeCircleLabAccess: boolean("creative_circle_lab_access").notNull().default(false),
+  creativeCircleFeedbackAccess: boolean("creative_circle_feedback_access").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -143,6 +145,8 @@ export const creativeCircleInvitations = pgTable("creative_circle_invitations", 
   tokenHash: text("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  labAccess: boolean("lab_access").notNull().default(false),
+  feedbackAccess: boolean("feedback_access").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex("creative_circle_invite_email_unique").on(t.email),

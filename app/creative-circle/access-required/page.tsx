@@ -12,10 +12,10 @@ export default async function AccessRequiredPage() {
       <span className="micro" style={{ color: "var(--lime)" }}>CREATIVE CIRCLE / ACCESS</span>
       <h1>ACCESS<br/>PENDING.</h1>
       <p className="muted" style={{ lineHeight: 1.6 }}>
-        You are signed in as <strong style={{ color: "var(--ink)" }}>{session.user.email}</strong>, but this account is not currently enabled for Creative Circle.
+        You are signed in as <strong style={{ color: "var(--ink)" }}>{session.user.email}</strong>, but this account is not currently enabled for any Creative Circle sections.
       </p>
       <p className="muted" style={{ fontSize: 11, lineHeight: 1.6 }}>
-        Ask the Creative Circle admin to enable your account, then refresh this page.
+        Ask the Creative Circle admin to enable Video Lab, Feedback Room, or both, then refresh this page.
       </p>
       <div className="actions"><SignOutButton/></div>
     </section>
