@@ -1,27 +1,25 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 
-type Member = { userId: string; name: string; email: string; createdAt: string };
-type Pending = { id: string; email: string; expiresAt: string; createdAt: string };
+type Member = { userId: string; name: string; email: string; createdAt: string | Date };
+type Pending = { id: string; email: string; expiresAt: string | Date; createdAt: string | Date };
 
-export function ReviewersPanel() {
-  const [members, setMembers] = useState<Member[]>([]);
-  const [pending, setPending] = useState<Pending[]>([]);
+export function ReviewersPanel({ initialMembers, initialPending }: { initialMembers: Member[]; initialPending: Pending[] }) {
+  const [members, setMembers] = useState<Member[]>(initialMembers);
+  const [pending, setPending] = useState<Pending[]>(initialPending);
   const [email, setEmail] = useState("");
   const [inviteUrl, setInviteUrl] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function load() {
+  async function reload() {
     const response = await fetch("/api/feedback/invitations", { cache: "no-store" });
     if (!response.ok) return;
     const result = await response.json();
     setMembers(result.members ?? []);
     setPending(result.pending ?? []);
   }
-
-  useEffect(() => { void load(); }, []);
 
   async function invite(event: FormEvent) {
     event.preventDefault();
@@ -41,7 +39,7 @@ export function ReviewersPanel() {
       setMessage("Invite created. Send this one-time link to them.");
     }
     setEmail("");
-    await load();
+    await reload();
   }
 
   async function copy() {
