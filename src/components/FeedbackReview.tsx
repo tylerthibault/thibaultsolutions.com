@@ -319,7 +319,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
   const open = comments.filter((comment) => !comment.resolved);
   const resolved = comments.filter((comment) => comment.resolved);
 
-  return <div className="feedback-review-grid">
+  return <div className={`feedback-review-grid ${mediaOrientation}`}>
     <section className={`feedback-player-panel ${mediaOrientation}`}>
       <div className={mediaOrientation === "portrait" ? "feedback-phone-shell" : "feedback-landscape-shell"}>
         <div className="feedback-player">
