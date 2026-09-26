@@ -76,12 +76,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
   if (!request.body) return NextResponse.json({ error: "Missing upload body." }, { status: 400 });
 
   await ensureStorage();
-  const tempKey = `${slot}.${randomUUID()}.upload`;
-  const tempPath = storagePath("temp", tempKey);
-  const finalKey = `${randomUUID()}.mp4`;
-  const finalPath = storagePath("uploads", finalKey);
-  const thumbKey = `${randomUUID()}.jpg`;
-  const thumbPath = storagePath("thumbnails", thumbKey);
+  const uploadToken = randomUUID();
+  const tempPath = storagePath("temp", `homepage.${slot}.${uploadToken}.upload`);
   let received = 0;
 
   const source = Readable.fromWeb(request.body as never);
@@ -91,14 +87,81 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
   });
 
   try {
-    await pipeline(source, createWriteStream(tempPath, { flags: "w" }));
+    await pipeline(source, createWriteStream(tempPath, { flags: "wx" }));
     const tempInfo = await stat(tempPath);
     if (tempInfo.size <= 0) throw new Error("Empty upload");
 
-    const sourceMeta = await probeVideo(tempPath);
-    console.info("Homepage UGC upload processing started", {
+    console.info("Homepage UGC upload stored", {
       slot,
       originalName,
+      bytes: tempInfo.size,
+      uploadToken,
+    });
+
+    return NextResponse.json({
+      uploadToken,
+      originalName,
+      mimeType: mime,
+      bytes: tempInfo.size,
+    }, { status: 201 });
+  } catch (error) {
+    await unlink(tempPath).catch(() => undefined);
+    const message = error instanceof Error ? error.message : "Upload failed";
+    console.error("Homepage UGC upload staging failed", { slot, originalName, error: message });
+
+    return NextResponse.json({
+      error: message.includes("too large")
+        ? "Upload exceeded configured limit."
+        : "The server could not store the uploaded file.",
+    }, { status: message.includes("too large") ? 413 : 422 });
+  }
+}
+
+export async function PATCH(request: Request, ctx: { params: Promise<{ slot: string }> }) {
+  const current = await requireAdmin(request);
+  if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { slot } = await ctx.params;
+  const definition = getHomepageUgcSlot(slot);
+  if (!definition) return NextResponse.json({ error: "Unknown homepage slot." }, { status: 404 });
+
+  const body = await request.json().catch(() => null) as {
+    uploadToken?: unknown;
+    originalName?: unknown;
+    mimeType?: unknown;
+  } | null;
+
+  const uploadToken = typeof body?.uploadToken === "string" ? body.uploadToken : "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uploadToken)) {
+    return NextResponse.json({ error: "Invalid upload token." }, { status: 400 });
+  }
+
+  const originalName = typeof body?.originalName === "string"
+    ? body.originalName.slice(0, 240)
+    : "homepage-video.mp4";
+  const mime = typeof body?.mimeType === "string" && allowed.has(body.mimeType)
+    ? body.mimeType
+    : "video/mp4";
+
+  await ensureStorage();
+
+  const tempPath = storagePath("temp", `homepage.${slot}.${uploadToken}.upload`);
+  const tempInfo = await stat(tempPath).catch(() => null);
+  if (!tempInfo?.isFile() || tempInfo.size <= 0) {
+    return NextResponse.json({ error: "The staged upload is missing or expired. Upload the file again." }, { status: 410 });
+  }
+
+  const finalKey = `${randomUUID()}.mp4`;
+  const finalPath = storagePath("uploads", finalKey);
+  const thumbKey = `${randomUUID()}.jpg`;
+  const thumbPath = storagePath("thumbnails", thumbKey);
+
+  try {
+    const sourceMeta = await probeVideo(tempPath);
+    console.info("Homepage UGC processing started", {
+      slot,
+      originalName,
+      bytes: tempInfo.size,
       codec: sourceMeta.codec,
       width: sourceMeta.width,
       height: sourceMeta.height,
@@ -108,15 +171,6 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
     await makeBrowserPlaybackCopy(tempPath, finalPath, sourceMeta.codec);
     const meta = await probeVideo(finalPath);
     await makeThumbnail(finalPath, thumbPath);
-
-    console.info("Homepage UGC upload processing completed", {
-      slot,
-      originalName,
-      codec: meta.codec,
-      width: meta.width,
-      height: meta.height,
-      durationMs: meta.durationMs,
-    });
     const sizeBytes = await fileSize("uploads", finalKey);
 
     const previous = await currentSlot(slot);
@@ -153,6 +207,15 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
 
     if (previous?.assetId && previous.assetId !== asset.id) await removeAsset(previous);
 
+    console.info("Homepage UGC processing completed", {
+      slot,
+      originalName,
+      codec: meta.codec,
+      width: meta.width,
+      height: meta.height,
+      durationMs: meta.durationMs,
+    });
+
     return NextResponse.json({
       slot: {
         ...definition,
@@ -170,21 +233,19 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
       },
     }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Upload failed";
+    const message = error instanceof Error ? error.message : "Processing failed";
     await Promise.all([
       unlink(finalPath).catch(() => undefined),
       unlink(thumbPath).catch(() => undefined),
     ]);
-    console.error("Homepage UGC upload failed", { slot, originalName, error: message });
 
+    console.error("Homepage UGC processing failed", { slot, originalName, error: message });
     const timedOut = message.includes("timed out");
     return NextResponse.json({
-      error: message.includes("too large")
-        ? "Upload exceeded configured limit."
-        : timedOut
-          ? "Video processing took too long. Try a shorter MP4 or check the server logs."
-          : "Video upload or processing failed.",
-    }, { status: message.includes("too large") ? 413 : timedOut ? 504 : 422 });
+      error: timedOut
+        ? "Video processing took too long. Try a shorter MP4 or check the server logs."
+        : "Video processing failed.",
+    }, { status: timedOut ? 504 : 422 });
   } finally {
     await unlink(tempPath).catch(() => undefined);
   }

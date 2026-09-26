@@ -67,38 +67,64 @@ export function HomepageLandingEditor() {
       }
     };
 
-    xhr.upload.onload = () => {
-      setProgress(100);
-      setUploadPhase("processing");
-    };
+    xhr.onload = async () => {
+      let staged: { uploadToken?: string; originalName?: string; mimeType?: string; error?: string } = {};
+      try { staged = JSON.parse(xhr.responseText || "{}"); } catch {}
 
-    xhr.onload = () => {
-      setBusy(null);
-      setUploadPhase("idle");
-      let result: Record<string, unknown> = {};
-      try { result = JSON.parse(xhr.responseText || "{}"); } catch {}
-      if (xhr.status < 200 || xhr.status >= 300) {
-        setMessage(typeof result.error === "string" ? result.error : "Upload failed.");
+      if (xhr.status < 200 || xhr.status >= 300 || !staged.uploadToken) {
+        setBusy(null);
+        setUploadPhase("idle");
+        setMessage(staged.error ?? "Upload failed before processing could start.");
         return;
       }
-      setMessage("Homepage video updated.");
-      reloadPreview();
+
+      setProgress(100);
+      setUploadPhase("processing");
+
+      try {
+        const response = await fetch(`/api/homepage/admin/slots/${encodeURIComponent(slotId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            uploadToken: staged.uploadToken,
+            originalName: staged.originalName ?? file.name,
+            mimeType: staged.mimeType ?? file.type ?? "video/mp4",
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+
+        setBusy(null);
+        setUploadPhase("idle");
+
+        if (!response.ok) {
+          setMessage(result.error ?? "Video processing failed.");
+          return;
+        }
+
+        setMessage("Homepage video updated.");
+        reloadPreview();
+      } catch {
+        setBusy(null);
+        setUploadPhase("idle");
+        setMessage("The upload finished, but the processing request failed.");
+      }
     };
 
     xhr.onerror = () => {
       setBusy(null);
       setUploadPhase("idle");
-      setMessage("Upload failed before the server responded.");
+      setMessage("Upload failed before the server confirmed the file.");
     };
 
     xhr.ontimeout = () => {
       setBusy(null);
       setUploadPhase("idle");
-      setMessage("The server took too long to process this video. Try a shorter MP4 or check the application logs.");
+      setMessage("The file upload timed out before the server confirmed it.");
     };
 
-    xhr.timeout = 20 * 60 * 1000;
-
+    // This request only transfers the file now. FFmpeg runs in the separate
+    // PATCH request after the server confirms the upload is fully stored.
+    xhr.timeout = 30 * 60 * 1000;
     xhr.send(file);
   }
 
@@ -223,7 +249,7 @@ export function HomepageLandingEditor() {
         const busyLabel = doc.createElement("div");
         busyLabel.className = "homepage-edit-busy";
         busyLabel.textContent = uploadPhase === "processing"
-          ? "PROCESSING VIDEO…"
+          ? "UPLOAD COMPLETE · PROCESSING VIDEO…"
           : `UPLOADING ${progress}%`;
         screen.appendChild(busyLabel);
       }
