@@ -65,7 +65,7 @@
 
     .hero-visual{position:relative;display:grid;place-items:center;min-height:610px}
     .hero-visual::before{content:"";position:absolute;width:420px;height:420px;border:1px solid rgba(114,232,255,.18);border-radius:50%;box-shadow:0 0 0 58px rgba(89,104,255,.035),0 0 0 116px rgba(114,232,255,.022)}
-    .hero-phone{position:relative;z-index:2;width:290px;aspect-ratio:9/18.5;padding:9px;border:2px solid #07090d;border-radius:40px;background:linear-gradient(145deg,#aab3bd,#3b444f 18%,#171c22 45%,#090c10 100%);box-shadow:11px 12px 0 #07090d,0 40px 100px rgba(0,0,0,.48);transform:rotate(3deg)}
+    .hero-phone{position:relative;z-index:2;width:290px;aspect-ratio:9/15.6;padding:9px;border:2px solid #07090d;border-radius:40px;background:linear-gradient(145deg,#aab3bd,#3b444f 18%,#171c22 45%,#090c10 100%);box-shadow:11px 12px 0 #07090d,0 40px 100px rgba(0,0,0,.48);transform:rotate(3deg)}
     .hero-phone::before{content:"";position:absolute;z-index:4;left:50%;top:12px;transform:translateX(-50%);width:82px;height:21px;border-radius:999px;background:#080a0e}
     .hero-screen{position:relative;width:100%;height:100%;overflow:hidden;border-radius:31px;background:linear-gradient(160deg,#1f2733,#0c1016);border:1px solid #05070a}
     .hero-portrait{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 45%,rgba(5,7,10,.9) 88%),url("https://avatars.githubusercontent.com/u/16256497?v=4") center 25%/cover no-repeat;filter:saturate(.85)}
@@ -81,7 +81,7 @@
     .featured .section-lead{color:var(--muted)}
     .portfolio-row{display:grid;grid-template-columns:repeat(5,1fr);gap:22px;margin-top:52px}
     .portfolio-item{text-align:center}
-    .portfolio-phone{position:relative;margin:auto;width:min(100%,190px);aspect-ratio:9/17.8;padding:7px;border:2px solid #111;border-radius:29px;background:#111;box-shadow:7px 8px 0 rgba(16,16,16,.12)}
+    .portfolio-phone{position:relative;margin:auto;width:min(100%,190px);aspect-ratio:9/15.5;padding:7px;border:2px solid #111;border-radius:29px;background:#111;box-shadow:7px 8px 0 rgba(16,16,16,.12)}
     .portfolio-screen{position:relative;width:100%;height:100%;overflow:hidden;border-radius:22px;background:#151a21}
     .portfolio-screen::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,transparent 55%,rgba(0,0,0,.78) 100%);pointer-events:none}
     .portfolio-screen .screen-label{position:absolute;z-index:2;left:10px;right:10px;top:12px;color:white;font-size:8px;font-weight:800;letter-spacing:.04em;text-align:left}
@@ -96,7 +96,7 @@
     .portfolio-item p{margin:0;font-size:10px;line-height:1.45}
     .portfolio-item .format{font-size:8px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;margin-top:4px}
     .portfolio-item a:hover .portfolio-phone{transform:translateY(-3px)}\n    .featured .portfolio-phone{border-color:#374250;box-shadow:7px 8px 0 rgba(89,104,255,.18)}\n    .slot-video,.slot-embed{position:absolute;z-index:0;inset:0;width:100%;height:100%;background:#000}
-    .slot-video{object-fit:contain;object-position:center;max-width:100%;max-height:100%;border-radius:inherit}
+    .slot-video{object-fit:contain;object-position:center;width:100%;height:100%;max-width:100%;max-height:100%;border-radius:inherit}
     .slot-embed{border:0}\n    .hero-screen.has-slot-video .hero-portrait,
     .has-slot-video>.screen-label,
     .has-slot-video>.screen-hook,
@@ -115,7 +115,7 @@
     .campaign-copy strong{display:block;margin-top:20px;color:#111;font-size:11px}
     .campaign-phones{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
     .campaign-card{text-align:center}
-    .campaign-phone{position:relative;width:100%;max-width:205px;aspect-ratio:9/17.8;margin:auto;padding:7px;border:1px solid #4b5663;border-radius:29px;background:linear-gradient(145deg,#555f6c,#181d24 30%,#0c0f13);box-shadow:0 18px 55px rgba(0,0,0,.3)}
+    .campaign-phone{position:relative;width:100%;max-width:205px;aspect-ratio:9/15.5;margin:auto;padding:7px;border:1px solid #4b5663;border-radius:29px;background:linear-gradient(145deg,#555f6c,#181d24 30%,#0c0f13);box-shadow:0 18px 55px rgba(0,0,0,.3)}
     .campaign-screen{position:relative;width:100%;height:100%;overflow:hidden;border-radius:22px;background:#10141a}
     .campaign-screen .angle{position:absolute;top:11px;left:11px;right:11px;z-index:2;text-align:left;color:#fff;font-size:8px;font-weight:800;letter-spacing:.05em}
     .campaign-screen .headline{position:absolute;z-index:2;left:12px;right:12px;bottom:20px;text-align:left;font-size:19px;line-height:1.04;font-weight:700;letter-spacing:-.04em}
@@ -219,6 +219,13 @@
     .campaign-screen.has-slot-video::after {
       display:none !important;
     }
+
+  
+    .slot-player{position:absolute;z-index:4;inset:0;display:grid;place-items:center;pointer-events:none}
+    .slot-play-button{pointer-events:auto;display:grid;place-items:center;width:62px;height:62px;border:2px solid rgba(255,255,255,.9);border-radius:50%;background:rgba(6,9,13,.72);color:#fff;box-shadow:0 12px 34px rgba(0,0,0,.4);cursor:pointer;backdrop-filter:blur(8px)}
+    .slot-play-button::before{content:"";width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:15px solid currentColor;margin-left:4px}
+    .slot-play-button:hover{background:var(--lime);color:#071000;border-color:var(--lime)}
+    .slot-player.is-playing{display:none}
 
   </style>
 </head>
@@ -436,24 +443,38 @@
             video.className = "slot-video";
             video.src = slot.mediaUrl;
             if (slot.thumbnailUrl) video.poster = slot.thumbnailUrl;
-            video.muted = true;
-            video.loop = true;
+            video.muted = false;
+            video.autoplay = false;
+            video.loop = false;
+            video.controls = true;
             video.playsInline = true;
-            video.preload = slot.id === "hero" ? "metadata" : "none";
+            video.preload = "metadata";
             video.setAttribute("aria-label", slot.title + " portfolio video");
+
+            const player = document.createElement("div");
+            player.className = "slot-player";
+            const playButton = document.createElement("button");
+            playButton.className = "slot-play-button";
+            playButton.type = "button";
+            playButton.setAttribute("aria-label", "Play " + slot.title);
+            player.appendChild(playButton);
+
+            playButton.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              video.muted = false;
+              video.play().catch(() => undefined);
+            });
+
+            video.addEventListener("play", () => player.classList.add("is-playing"));
+            video.addEventListener("pause", () => {
+              if (!video.ended) player.classList.remove("is-playing");
+            });
+            video.addEventListener("ended", () => player.classList.remove("is-playing"));
+
+            screen.prepend(player);
             screen.prepend(video);
             screen.classList.add("has-slot-video");
-
-            if (slot.id === "hero" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-              video.autoplay = true;
-              video.play().catch(() => undefined);
-            } else {
-              screen.addEventListener("mouseenter", () => video.play().catch(() => undefined));
-              screen.addEventListener("mouseleave", () => {
-                video.pause();
-                video.currentTime = 0;
-              });
-            }
           }
         } catch {
           // The static placeholders remain usable if the media API is unavailable.
