@@ -96,9 +96,27 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
     if (tempInfo.size <= 0) throw new Error("Empty upload");
 
     const sourceMeta = await probeVideo(tempPath);
+    console.info("Homepage UGC upload processing started", {
+      slot,
+      originalName,
+      codec: sourceMeta.codec,
+      width: sourceMeta.width,
+      height: sourceMeta.height,
+      durationMs: sourceMeta.durationMs,
+    });
+
     await makeBrowserPlaybackCopy(tempPath, finalPath, sourceMeta.codec);
     const meta = await probeVideo(finalPath);
     await makeThumbnail(finalPath, thumbPath);
+
+    console.info("Homepage UGC upload processing completed", {
+      slot,
+      originalName,
+      codec: meta.codec,
+      width: meta.width,
+      height: meta.height,
+      durationMs: meta.durationMs,
+    });
     const sizeBytes = await fileSize("uploads", finalKey);
 
     const previous = await currentSlot(slot);
@@ -157,11 +175,16 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
       unlink(finalPath).catch(() => undefined),
       unlink(thumbPath).catch(() => undefined),
     ]);
+    console.error("Homepage UGC upload failed", { slot, originalName, error: message });
+
+    const timedOut = message.includes("timed out");
     return NextResponse.json({
       error: message.includes("too large")
         ? "Upload exceeded configured limit."
-        : "Video upload or processing failed.",
-    }, { status: message.includes("too large") ? 413 : 422 });
+        : timedOut
+          ? "Video processing took too long. Try a shorter MP4 or check the server logs."
+          : "Video upload or processing failed.",
+    }, { status: message.includes("too large") ? 413 : timedOut ? 504 : 422 });
   } finally {
     await unlink(tempPath).catch(() => undefined);
   }

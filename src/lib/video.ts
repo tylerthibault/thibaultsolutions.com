@@ -13,20 +13,40 @@ export type VideoMetadata = {
   rotation: number;
 };
 
-function run(cmd: string, args: string[]) {
+function run(cmd: string, args: string[], timeoutMs = 15 * 60 * 1000) {
   return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
     const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
+    let settled = false;
+
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill("SIGKILL");
+      reject(new Error(`${cmd} timed out after ${Math.round(timeoutMs / 1000)} seconds`));
+    }, timeoutMs);
+
     child.stdout.on("data", (d) => (stdout += d.toString()));
     child.stderr.on("data", (d) => (stderr += d.toString()));
-    child.on("error", reject);
-    child.on("close", (code) => code === 0 ? resolve({ stdout, stderr }) : reject(new Error(`${cmd} exited ${code}: ${stderr.slice(-2000)}`)));
+    child.on("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (code === 0) resolve({ stdout, stderr });
+      else reject(new Error(`${cmd} exited ${code}: ${stderr.slice(-2000)}`));
+    });
   });
 }
 
 export async function probeVideo(input: string): Promise<VideoMetadata> {
-  const { stdout } = await run(ffprobe, ["-v", "error", "-show_streams", "-show_format", "-of", "json", input]);
+  const { stdout } = await run(ffprobe, ["-v", "error", "-show_streams", "-show_format", "-of", "json", input], 60_000);
   const data = JSON.parse(stdout) as { streams?: Array<Record<string, unknown>>; format?: Record<string, unknown> };
   const video = data.streams?.find((stream) => stream.codec_type === "video");
   if (!video) throw new Error("No video stream found");
@@ -53,7 +73,7 @@ export async function probeVideo(input: string): Promise<VideoMetadata> {
 }
 
 export async function makeThumbnail(input: string, output: string) {
-  await run(ffmpeg, ["-y", "-ss", "0.25", "-i", input, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2", "-q:v", "3", output]);
+  await run(ffmpeg, ["-y", "-ss", "0.25", "-i", input, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2", "-q:v", "3", output], 120_000);
 }
 
 export async function makeBrowserPlaybackCopy(input: string, output: string, sourceCodec?: string) {
@@ -72,7 +92,7 @@ export async function makeBrowserPlaybackCopy(input: string, output: string, sou
     "-b:a", "160k",
     "-movflags", "+faststart",
     output,
-  ]);
+  ], 15 * 60 * 1000);
 }
 
 export function getFfmpegPath() { return ffmpeg; }

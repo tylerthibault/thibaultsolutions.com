@@ -27,6 +27,7 @@ export function HomepageLandingEditor() {
   const [linkValue, setLinkValue] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading" | "processing">("idle");
   const [message, setMessage] = useState("");
 
   const refreshSlots = useCallback(async () => {
@@ -53,6 +54,7 @@ export function HomepageLandingEditor() {
     setBusy(slotId);
     setMessage("");
     setProgress(0);
+    setUploadPhase("uploading");
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `/api/homepage/admin/slots/${encodeURIComponent(slotId)}`);
@@ -60,11 +62,19 @@ export function HomepageLandingEditor() {
     xhr.setRequestHeader("X-File-Name", encodeURIComponent(file.name));
 
     xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) setProgress(Math.round((event.loaded / event.total) * 100));
+      if (event.lengthComputable) {
+        setProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      }
+    };
+
+    xhr.upload.onload = () => {
+      setProgress(100);
+      setUploadPhase("processing");
     };
 
     xhr.onload = () => {
       setBusy(null);
+      setUploadPhase("idle");
       let result: Record<string, unknown> = {};
       try { result = JSON.parse(xhr.responseText || "{}"); } catch {}
       if (xhr.status < 200 || xhr.status >= 300) {
@@ -77,8 +87,17 @@ export function HomepageLandingEditor() {
 
     xhr.onerror = () => {
       setBusy(null);
+      setUploadPhase("idle");
       setMessage("Upload failed before the server responded.");
     };
+
+    xhr.ontimeout = () => {
+      setBusy(null);
+      setUploadPhase("idle");
+      setMessage("The server took too long to process this video. Try a shorter MP4 or check the application logs.");
+    };
+
+    xhr.timeout = 20 * 60 * 1000;
 
     xhr.send(file);
   }
@@ -203,11 +222,13 @@ export function HomepageLandingEditor() {
       if (busy === slot.id) {
         const busyLabel = doc.createElement("div");
         busyLabel.className = "homepage-edit-busy";
-        busyLabel.textContent = progress > 0 ? `UPLOADING ${progress}%` : "PROCESSING…";
+        busyLabel.textContent = uploadPhase === "processing"
+          ? "PROCESSING VIDEO…"
+          : `UPLOADING ${progress}%`;
         screen.appendChild(busyLabel);
       }
     }
-  }, [slots, busy, progress, frameVersion]);
+  }, [slots, busy, progress, uploadPhase, frameVersion]);
 
   return <div className="homepage-editor-page">
     {message && <div className="homepage-editor-toast">{message}</div>}
