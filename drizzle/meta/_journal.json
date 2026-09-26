@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789996800000,
+      "tag": "0000_creative_circle",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790291100000,
+      "tag": "0001_feedback_room",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790305000000,
+      "tag": "0002_access_control",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790307600000,
+      "tag": "0003_creative_circle_invites",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790309900000,
+      "tag": "0004_section_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790312500000,
+      "tag": "0005_feedback_video_public",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790314300000,
+      "tag": "0006_feedback_thumbnails_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790362800000,
+      "tag": "0007_username_login",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790401200000,
+      "tag": "0008_homepage_ugc_media",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790405100000,
+      "tag": "0009_homepage_ugc_links",
+      "breakpoints": true
+    }
+  ]
+}

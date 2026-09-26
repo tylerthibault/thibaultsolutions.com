@@ -1,69 +1,76 @@
 # thibaultsolutions.com
 
-Tyler Thibault's UGC / creator brand website.
+Tyler Thibault's creator / builder website plus the private **Creative Circle** video-processing lab.
 
-## Permanent design direction
+## Production architecture
 
-The production site now uses the **Bold-Tech Mashup** direction.
+The site now runs behind a Next.js application built and deployed with Docker on Coolify. The public root still serves the preserved existing homepage source; Next powers Creative Circle and the application APIs.
 
-The core design idea is:
+The public homepage preserves the **Bold-Tech Mashup** direction documented in `STYLE_GUIDE.md`: **Bold first. Tech underneath.**
 
-**Bold first. Tech underneath.**
+Creative Circle adds an authenticated application surface at:
 
-The hero uses high-energy creator styling, oversized typography, yellow/blue editorial treatments, and hard-shadow callouts. The rest of the site settles into a darker technical system with structured grids, UI-inspired details, electric lime accents, and restrained product-focused layouts.
+- `/creative-circle`
+- `/creative-circle/new`
+- `/creative-circle/project/[id]`
 
-The canonical site is:
+The existing static reference pages remain in source control:
 
-- `/index.html`
+- `/store/`
+- `/tech/`
+- `/bold/`
+- `/mashup/`
+
+The production build copies those preserved pages into Next's public output and rewrites their existing URLs, so the migration does not require deleting the earlier site assets.
 
 ## Style guide
 
 Read **`STYLE_GUIDE.md` before creating or significantly modifying any page.**
 
-It documents:
+It remains the source of truth for colors, typography, layout, responsive behavior, component language, copy voice, accessibility, and the Bold-Tech visual system.
 
-- brand principles
-- color tokens
-- typography
-- spacing and responsive gutters
-- hero rules
-- navigation
-- reusable components
-- imagery
-- motion
-- copy/voice
-- accessibility
-- implementation conventions
-- templates for future pages
+## Creative Circle
 
-Future pages should follow the style guide rather than independently recreating the visual style.
+Read **`CREATIVE_CIRCLE.md`** for the application architecture, environment variables, storage model, worker process, effect engine, validation commands, and exact Coolify deployment steps.
 
-## Prototype archive
+Core runtime:
 
-Earlier directions remain available as references:
+- Next.js / React / TypeScript
+- PostgreSQL + Drizzle
+- Better Auth
+- pg-boss render queue
+- FFmpeg / FFprobe
+- persistent `/data` media volume
+- separate web and render-worker processes from one Docker image
 
-- `/tech/`
-- `/bold/`
-- `/mashup/`
+## Development
 
-They are not the production homepage.
+```bash
+npm ci
+npm run db:migrate
+npm run db:seed-owner
+npm run dev
+```
 
-## Current homepage sections
+Start the worker separately when testing final renders:
 
-1. Bold creator-first hero
-2. Tech/creator ticker
-3. What I make
-4. Selected formats / portfolio placeholders
-5. Why Tyler
-6. Process
-7. Contact CTA
+```bash
+npm run build
+npm run worker
+```
 
-## Placeholder items still to replace
+Run validation with:
 
-- Contact email is currently `hello@thibaultsolutions.com`.
-- The GitHub profile image is temporary creator imagery.
-- Portfolio blocks are designed placeholders until real videos / thumbnails are supplied.
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run test:effects
+npm run build
+# CI additionally boots web + worker and runs the authenticated render E2E test
+docker build -t creative-circle .
+```
 
-## Deployment
+Health check: `GET /api/health` verifies PostgreSQL access and the persistent media directories without exposing owner data.
 
-This is plain HTML/CSS with no build step and is deployed through Coolify as a **Static** application.
+Do not commit real secrets or owner credentials.

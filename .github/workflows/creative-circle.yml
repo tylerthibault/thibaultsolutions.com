@@ -1,0 +1,55 @@
+name: Creative Circle CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: creative_circle
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/creative_circle
+      APP_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ${{ github.sha }}-creative-circle-ci-only
+      OWNER_EMAIL: owner@example.test
+      OWNER_PASSWORD: ci-owner-password-12345
+      CREATIVE_CIRCLE_SIGNUP_PIN: 735194
+      MEDIA_STORAGE_PATH: /tmp/creative-circle-data
+      MAX_UPLOAD_SIZE: 104857600
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: npm ci
+      - name: Audit production dependency graph
+        run: |
+          npm audit --json > audit.json || true
+          node scripts/check-production-audit.mjs audit.json package-lock.json
+      - run: npm run db:migrate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:effects
+      - run: npm run build
+      - run: npm run db:seed-owner
+      - name: End-to-end authenticated render flow
+        run: |
+          PORT=3000 node .next/standalone/server.js > /tmp/cc-server.log 2>&1 &
+          npm run worker > /tmp/cc-worker.log 2>&1 &
+          npm run test:e2e
+      - run: docker build -t creative-circle:test .
