@@ -167,7 +167,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
     const targetOrigin = "https://www.tiktok.com";
 
     function send(type: "pause" | "play" | "seekTo", value?: number) {
-      contentWindow.postMessage(
+      contentWindow!.postMessage(
         value === undefined
           ? { type, "x-tiktok-player": true }
           : { type, value, "x-tiktok-player": true },
