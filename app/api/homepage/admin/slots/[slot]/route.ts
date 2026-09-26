@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { apiSessionUser } from "@/src/lib/api-auth";
 import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
+import { parseFeedbackLink, resolveFeedbackThumbnail } from "@/src/lib/feedback-links";
 import { getHomepageUgcSlot } from "@/src/lib/homepage-slots";
 import { homepageUgcSlots, mediaAssets } from "@/src/lib/schema";
 import { ensureStorage, fileSize, removeStored, storagePath } from "@/src/lib/storage";
@@ -28,9 +29,10 @@ async function requireAdmin(request: Request) {
   return current && isCreativeCircleAdmin(current.email) ? current : null;
 }
 
-async function currentAsset(slot: string) {
+async function currentSlot(slot: string) {
   const [row] = await db.select({
     assetId: homepageUgcSlots.assetId,
+    sourceUrl: homepageUgcSlots.sourceUrl,
     storageKey: mediaAssets.storageKey,
     thumbnailKey: mediaAssets.thumbnailKey,
   }).from(homepageUgcSlots)
@@ -40,7 +42,7 @@ async function currentAsset(slot: string) {
   return row ?? null;
 }
 
-async function removeAsset(asset: Awaited<ReturnType<typeof currentAsset>>) {
+async function removeAsset(asset: Awaited<ReturnType<typeof currentSlot>>) {
   if (!asset?.assetId) return;
   await Promise.all([
     removeStored("uploads", asset.storageKey),
@@ -99,7 +101,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
     await makeThumbnail(finalPath, thumbPath);
     const sizeBytes = await fileSize("uploads", finalKey);
 
-    const previous = await currentAsset(slot);
+    const previous = await currentSlot(slot);
     const [asset] = await db.insert(mediaAssets).values({
       ownerId: current.id,
       originalName,
@@ -110,14 +112,25 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
       ...meta,
     }).returning();
 
+    const updatedAt = new Date();
     await db.insert(homepageUgcSlots).values({
       slot,
       assetId: asset.id,
+      sourceUrl: null,
+      provider: null,
+      thumbnailUrl: null,
       updatedBy: current.id,
-      updatedAt: new Date(),
+      updatedAt,
     }).onConflictDoUpdate({
       target: homepageUgcSlots.slot,
-      set: { assetId: asset.id, updatedBy: current.id, updatedAt: new Date() },
+      set: {
+        assetId: asset.id,
+        sourceUrl: null,
+        provider: null,
+        thumbnailUrl: null,
+        updatedBy: current.id,
+        updatedAt,
+      },
     });
 
     if (previous?.assetId && previous.assetId !== asset.id) await removeAsset(previous);
@@ -126,13 +139,16 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
       slot: {
         ...definition,
         hasMedia: true,
-        originalName,
+        sourceType: "upload",
+        sourceUrl: null,
+        provider: null,
+        embedUrl: null,
         width: meta.width,
         height: meta.height,
         durationMs: meta.durationMs,
         mediaUrl: `/api/homepage/slots/${slot}/media`,
         thumbnailUrl: `/api/homepage/slots/${slot}/thumbnail`,
-        updatedAt: new Date().toISOString(),
+        updatedAt: updatedAt.toISOString(),
       },
     }, { status: 201 });
   } catch (error) {
@@ -151,6 +167,67 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
   }
 }
 
+export async function PUT(request: Request, ctx: { params: Promise<{ slot: string }> }) {
+  const current = await requireAdmin(request);
+  if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { slot } = await ctx.params;
+  const definition = getHomepageUgcSlot(slot);
+  if (!definition) return NextResponse.json({ error: "Unknown homepage slot." }, { status: 404 });
+
+  const body = await request.json().catch(() => null) as { url?: unknown } | null;
+  const raw = typeof body?.url === "string" ? body.url.trim() : "";
+  const parsed = parseFeedbackLink(raw);
+  if (!parsed) {
+    return NextResponse.json({
+      error: "Use a valid TikTok, Instagram Reel/post, YouTube video, or YouTube Shorts link.",
+    }, { status: 400 });
+  }
+
+  const thumbnailUrl = await resolveFeedbackThumbnail(parsed);
+  const previous = await currentSlot(slot);
+  const updatedAt = new Date();
+
+  await db.insert(homepageUgcSlots).values({
+    slot,
+    assetId: null,
+    sourceUrl: parsed.canonicalUrl,
+    provider: parsed.provider,
+    thumbnailUrl,
+    updatedBy: current.id,
+    updatedAt,
+  }).onConflictDoUpdate({
+    target: homepageUgcSlots.slot,
+    set: {
+      assetId: null,
+      sourceUrl: parsed.canonicalUrl,
+      provider: parsed.provider,
+      thumbnailUrl,
+      updatedBy: current.id,
+      updatedAt,
+    },
+  });
+
+  await removeAsset(previous);
+
+  return NextResponse.json({
+    slot: {
+      ...definition,
+      hasMedia: true,
+      sourceType: "link",
+      sourceUrl: parsed.canonicalUrl,
+      provider: parsed.provider,
+      embedUrl: parsed.embedUrl,
+      width: null,
+      height: null,
+      durationMs: null,
+      mediaUrl: null,
+      thumbnailUrl,
+      updatedAt: updatedAt.toISOString(),
+    },
+  });
+}
+
 export async function DELETE(request: Request, ctx: { params: Promise<{ slot: string }> }) {
   const current = await requireAdmin(request);
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -158,7 +235,7 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ slot: st
   const { slot } = await ctx.params;
   if (!getHomepageUgcSlot(slot)) return NextResponse.json({ error: "Unknown homepage slot." }, { status: 404 });
 
-  const previous = await currentAsset(slot);
+  const previous = await currentSlot(slot);
   await db.delete(homepageUgcSlots).where(eq(homepageUgcSlots.slot, slot));
   await removeAsset(previous);
   return NextResponse.json({ ok: true });

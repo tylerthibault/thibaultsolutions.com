@@ -93,7 +93,9 @@
     .portfolio-item h3{font-size:18px;margin:15px 0 2px;letter-spacing:-.03em}
     .portfolio-item p{margin:0;font-size:10px;line-height:1.45}
     .portfolio-item .format{font-size:8px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;margin-top:4px}
-    .portfolio-item a:hover .portfolio-phone{transform:translateY(-3px)}\n    .featured .portfolio-phone{border-color:#374250;box-shadow:7px 8px 0 rgba(89,104,255,.18)}\n    .slot-video{position:absolute;z-index:0;inset:0;width:100%;height:100%;object-fit:cover;background:#000}\n    .hero-screen.has-slot-video .hero-portrait{display:none}\n    .portfolio-screen::after,.campaign-screen::after{z-index:1}\n    .portfolio-screen .screen-label,.portfolio-screen .screen-hook,.campaign-screen .angle,.campaign-screen .headline{z-index:2}
+    .portfolio-item a:hover .portfolio-phone{transform:translateY(-3px)}\n    .featured .portfolio-phone{border-color:#374250;box-shadow:7px 8px 0 rgba(89,104,255,.18)}\n    .slot-video,.slot-embed{position:absolute;z-index:0;inset:0;width:100%;height:100%;background:#000}
+    .slot-video{object-fit:cover}
+    .slot-embed{border:0}\n    .hero-screen.has-slot-video .hero-portrait{display:none}\n    .portfolio-screen::after,.campaign-screen::after{z-index:1}\n    .portfolio-screen .screen-label,.portfolio-screen .screen-hook,.campaign-screen .angle,.campaign-screen .headline{z-index:2}
 
     .campaigns{padding-top:110px;background:var(--yellow);color:var(--black)}\n    .campaigns>.shell .section-kicker{color:#292929}.campaigns>.shell .section-kicker::before{background:var(--blue)}\n    .campaigns>.shell .section-title span{color:var(--blue)}\n    .campaigns>.shell .section-lead{color:#2b2b2b}
     .campaign{border-top:1px solid rgba(16,16,16,.28);padding:88px 0}
@@ -386,10 +388,23 @@
           const data = await response.json();
 
           for (const slot of data.slots ?? []) {
-            if (!slot.hasMedia || !slot.mediaUrl) continue;
+            if (!slot.hasMedia) continue;
             const screen = document.querySelector('[data-home-slot="' + slot.id + '"]');
-            if (!screen || screen.querySelector(".slot-video")) continue;
+            if (!screen || screen.querySelector(".slot-video,.slot-embed")) continue;
 
+            if (slot.sourceType === "link" && slot.embedUrl) {
+              const frame = document.createElement("iframe");
+              frame.className = "slot-embed";
+              frame.src = slot.embedUrl;
+              frame.title = slot.title + " portfolio video";
+              frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+              frame.allowFullscreen = true;
+              screen.prepend(frame);
+              screen.classList.add("has-slot-video");
+              continue;
+            }
+
+            if (!slot.mediaUrl) continue;
             const video = document.createElement("video");
             video.className = "slot-video";
             video.src = slot.mediaUrl;

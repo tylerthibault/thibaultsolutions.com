@@ -79,6 +79,9 @@ export const mediaAssets = pgTable("media_assets", {
 export const homepageUgcSlots = pgTable("homepage_ugc_slots", {
   slot: text("slot").primaryKey(),
   assetId: uuid("asset_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+  sourceUrl: text("source_url"),
+  provider: text("provider"),
+  thumbnailUrl: text("thumbnail_url"),
   updatedBy: text("updated_by").references(() => user.id, { onDelete: "set null" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

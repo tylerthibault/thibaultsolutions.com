@@ -64,6 +64,13 @@
       "when": 1790401200000,
       "tag": "0008_homepage_ugc_media",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790405100000,
+      "tag": "0009_homepage_ugc_links",
+      "breakpoints": true
     }
   ]
 }
