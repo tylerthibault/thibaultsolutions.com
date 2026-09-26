@@ -321,7 +321,8 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
 
   return <div className="feedback-review-grid">
     <section className={`feedback-player-panel ${mediaOrientation}`}>
-      <div className="feedback-player">
+      <div className={mediaOrientation === "portrait" ? "feedback-phone-shell" : "feedback-landscape-shell"}>
+        <div className="feedback-player">
         {video.sourceType === "upload" ? (
           playbackStatus === "ready" ? (
             <video
@@ -418,6 +419,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
             </div>
           </div>
         </div>}
+        </div>
       </div>
 
       <div className="feedback-player-actions">
