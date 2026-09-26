@@ -15,6 +15,13 @@ type Video = {
   embedUrl: string | null;
 };
 type PlaybackStatus = "checking" | "preparing" | "ready" | "missing" | "error";
+type MediaOrientation = "portrait" | "landscape";
+
+function initialMediaOrientation(video: Video): MediaOrientation {
+  if (video.provider === "tiktok" || video.provider === "instagram") return "portrait";
+  if (video.provider === "youtube" && video.sourceUrl?.includes("/shorts/")) return "portrait";
+  return "landscape";
+}
 
 function timeLabel(ms: number | null) {
   if (ms === null) return "GENERAL";
@@ -87,6 +94,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
   );
   const [playbackDetail, setPlaybackDetail] = useState("");
   const [playbackAttempt, setPlaybackAttempt] = useState(0);
+  const [mediaOrientation, setMediaOrientation] = useState<MediaOrientation>(() => initialMediaOrientation(video));
 
   const canAutoTimestamp = video.sourceType === "upload" && playbackStatus === "ready" && timelineReady;
   const shownTimestamp = generalNote ? null : capturedMs;
@@ -312,7 +320,7 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
   const resolved = comments.filter((comment) => comment.resolved);
 
   return <div className="feedback-review-grid">
-    <section className="feedback-player-panel">
+    <section className={`feedback-player-panel ${mediaOrientation}`}>
       <div className="feedback-player">
         {video.sourceType === "upload" ? (
           playbackStatus === "ready" ? (
@@ -324,7 +332,13 @@ export function FeedbackReview({ video, initialComments, currentUser, role }: {
               playsInline
               preload="metadata"
               src={`/api/feedback/videos/${video.id}/media?player=3`}
-              onLoadedMetadata={() => setTimelineReady(true)}
+              onLoadedMetadata={(event) => {
+                const { videoWidth, videoHeight } = event.currentTarget;
+                if (videoWidth > 0 && videoHeight > 0) {
+                  setMediaOrientation(videoHeight > videoWidth ? "portrait" : "landscape");
+                }
+                setTimelineReady(true);
+              }}
               onTimeUpdate={(event) => setCurrentMs(Math.round(event.currentTarget.currentTime * 1000))}
               onError={() => {
                 setTimelineReady(false);
