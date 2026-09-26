@@ -56,64 +56,75 @@ export async function POST(request: Request, ctx: { params: Promise<{ slot: stri
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { slot } = await ctx.params;
-  const definition = getHomepageUgcSlot(slot);
-  if (!definition) return NextResponse.json({ error: "Unknown homepage slot." }, { status: 404 });
+  if (!getHomepageUgcSlot(slot)) return NextResponse.json({ error: "Unknown homepage slot." }, { status: 404 });
 
-  const mime = (request.headers.get("content-type") ?? "").split(";")[0].trim();
-  const ext = allowed.get(mime);
-  if (!ext) return NextResponse.json({ error: "Use MP4, MOV, M4V, or WebM." }, { status: 415 });
+  const uploadToken = request.headers.get("x-upload-token") ?? "";
+  const chunkIndex = Number(request.headers.get("x-chunk-index"));
+  const chunkCount = Number(request.headers.get("x-chunk-count"));
+  const declaredSize = Number(request.headers.get("x-file-size"));
+  const originalName = decodeURIComponent(request.headers.get("x-file-name") ?? "homepage-video.mp4").slice(0, 240);
+  const mimeType = request.headers.get("x-file-type") ?? "video/mp4";
 
-  const originalName = decodeURIComponent(request.headers.get("x-file-name") ?? `upload${ext}`).slice(0, 240);
-  if (!new Set([".mp4", ".mov", ".m4v", ".webm"]).has(path.extname(originalName).toLowerCase())) {
-    return NextResponse.json({ error: "Unsupported file extension." }, { status: 415 });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uploadToken)) {
+    return NextResponse.json({ error: "Invalid upload token." }, { status: 400 });
+  }
+  if (!Number.isInteger(chunkIndex) || !Number.isInteger(chunkCount) || chunkIndex < 0 || chunkCount < 1 || chunkIndex >= chunkCount) {
+    return NextResponse.json({ error: "Invalid chunk metadata." }, { status: 400 });
   }
 
   const max = Number(process.env.MAX_UPLOAD_SIZE ?? 2147483648);
-  const declared = Number(request.headers.get("content-length") ?? 0);
-  if (Number.isFinite(declared) && declared > max) {
+  if (!Number.isFinite(declaredSize) || declaredSize <= 0 || declaredSize > max) {
     return NextResponse.json({ error: "File is larger than the configured upload limit." }, { status: 413 });
   }
-  if (!request.body) return NextResponse.json({ error: "Missing upload body." }, { status: 400 });
+  if (!allowed.has(mimeType)) {
+    return NextResponse.json({ error: "Use MP4, MOV, M4V, or WebM." }, { status: 415 });
+  }
+  if (!request.body) return NextResponse.json({ error: "Missing upload chunk." }, { status: 400 });
 
   await ensureStorage();
-  const uploadToken = randomUUID();
   const tempPath = storagePath("temp", `homepage.${slot}.${uploadToken}.upload`);
-  let received = 0;
-
-  const source = Readable.fromWeb(request.body as never);
-  source.on("data", (chunk: Buffer) => {
-    received += chunk.length;
-    if (received > max) source.destroy(new Error("Upload too large"));
-  });
 
   try {
-    await pipeline(source, createWriteStream(tempPath, { flags: "wx" }));
-    const tempInfo = await stat(tempPath);
-    if (tempInfo.size <= 0) throw new Error("Empty upload");
+    if (chunkIndex === 0) await unlink(tempPath).catch(() => undefined);
 
-    console.info("Homepage UGC upload stored", {
+    const before = chunkIndex === 0 ? 0 : (await stat(tempPath).catch(() => null))?.size ?? 0;
+    const source = Readable.fromWeb(request.body as never);
+    await pipeline(source, createWriteStream(tempPath, { flags: chunkIndex === 0 ? "w" : "a" }));
+
+    const after = (await stat(tempPath)).size;
+    if (after <= before || after > declaredSize || after > max) {
+      throw new Error("Chunk write produced an invalid file size.");
+    }
+
+    console.info("Homepage UGC chunk stored", {
       slot,
       originalName,
-      bytes: tempInfo.size,
       uploadToken,
+      chunkIndex,
+      chunkCount,
+      bytesStored: after,
+      declaredSize,
     });
 
     return NextResponse.json({
+      ok: true,
       uploadToken,
-      originalName,
-      mimeType: mime,
-      bytes: tempInfo.size,
+      chunkIndex,
+      chunkCount,
+      bytesStored: after,
+      complete: chunkIndex === chunkCount - 1 && after === declaredSize,
     }, { status: 201 });
   } catch (error) {
-    await unlink(tempPath).catch(() => undefined);
-    const message = error instanceof Error ? error.message : "Upload failed";
-    console.error("Homepage UGC upload staging failed", { slot, originalName, error: message });
-
-    return NextResponse.json({
-      error: message.includes("too large")
-        ? "Upload exceeded configured limit."
-        : "The server could not store the uploaded file.",
-    }, { status: message.includes("too large") ? 413 : 422 });
+    const message = error instanceof Error ? error.message : "Chunk upload failed";
+    console.error("Homepage UGC chunk upload failed", {
+      slot,
+      originalName,
+      uploadToken,
+      chunkIndex,
+      chunkCount,
+      error: message,
+    });
+    return NextResponse.json({ error: "The server could not store this upload chunk." }, { status: 422 });
   }
 }
 
@@ -129,6 +140,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ slot: str
     uploadToken?: unknown;
     originalName?: unknown;
     mimeType?: unknown;
+    fileSize?: unknown;
   } | null;
 
   const uploadToken = typeof body?.uploadToken === "string" ? body.uploadToken : "";
@@ -142,6 +154,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ slot: str
   const mime = typeof body?.mimeType === "string" && allowed.has(body.mimeType)
     ? body.mimeType
     : "video/mp4";
+  const expectedSize = Number(body?.fileSize ?? 0);
 
   await ensureStorage();
 
@@ -149,6 +162,11 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ slot: str
   const tempInfo = await stat(tempPath).catch(() => null);
   if (!tempInfo?.isFile() || tempInfo.size <= 0) {
     return NextResponse.json({ error: "The staged upload is missing or expired. Upload the file again." }, { status: 410 });
+  }
+  if (!Number.isFinite(expectedSize) || expectedSize <= 0 || tempInfo.size !== expectedSize) {
+    return NextResponse.json({
+      error: `Upload is incomplete on the server (${tempInfo.size} of ${expectedSize || "unknown"} bytes). Please try again.`,
+    }, { status: 409 });
   }
 
   const finalKey = `${randomUUID()}.mp4`;

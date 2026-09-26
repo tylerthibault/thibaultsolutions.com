@@ -50,82 +50,71 @@ export function HomepageLandingEditor() {
     fileInputRef.current?.click();
   }
 
-  function uploadFile(slotId: string, file: File) {
+  async function uploadFile(slotId: string, file: File) {
+    const chunkSize = 8 * 1024 * 1024;
+    const chunkCount = Math.max(1, Math.ceil(file.size / chunkSize));
+    const uploadToken = crypto.randomUUID();
+
     setBusy(slotId);
     setMessage("");
     setProgress(0);
     setUploadPhase("uploading");
 
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `/api/homepage/admin/slots/${encodeURIComponent(slotId)}`);
-    xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
-    xhr.setRequestHeader("X-File-Name", encodeURIComponent(file.name));
+    try {
+      for (let index = 0; index < chunkCount; index += 1) {
+        const start = index * chunkSize;
+        const end = Math.min(file.size, start + chunkSize);
+        const chunk = file.slice(start, end, file.type || "application/octet-stream");
 
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        setProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
-      }
-    };
+        const response = await fetch(`/api/homepage/admin/slots/${encodeURIComponent(slotId)}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "X-Upload-Token": uploadToken,
+            "X-Chunk-Index": String(index),
+            "X-Chunk-Count": String(chunkCount),
+            "X-File-Size": String(file.size),
+            "X-File-Name": encodeURIComponent(file.name),
+            "X-File-Type": file.type || "video/mp4",
+          },
+          body: chunk,
+        });
 
-    xhr.onload = async () => {
-      let staged: { uploadToken?: string; originalName?: string; mimeType?: string; error?: string } = {};
-      try { staged = JSON.parse(xhr.responseText || "{}"); } catch {}
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.error ?? `Chunk ${index + 1} failed.`);
+        }
 
-      if (xhr.status < 200 || xhr.status >= 300 || !staged.uploadToken) {
-        setBusy(null);
-        setUploadPhase("idle");
-        setMessage(staged.error ?? "Upload failed before processing could start.");
-        return;
+        setProgress(Math.round(((index + 1) / chunkCount) * 100));
       }
 
       setProgress(100);
       setUploadPhase("processing");
 
-      try {
-        const response = await fetch(`/api/homepage/admin/slots/${encodeURIComponent(slotId)}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            uploadToken: staged.uploadToken,
-            originalName: staged.originalName ?? file.name,
-            mimeType: staged.mimeType ?? file.type ?? "video/mp4",
-          }),
-        });
-        const result = await response.json().catch(() => ({}));
+      const response = await fetch(`/api/homepage/admin/slots/${encodeURIComponent(slotId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploadToken,
+          originalName: file.name,
+          mimeType: file.type || "video/mp4",
+          fileSize: file.size,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
 
-        setBusy(null);
-        setUploadPhase("idle");
-
-        if (!response.ok) {
-          setMessage(result.error ?? "Video processing failed.");
-          return;
-        }
-
-        setMessage("Homepage video updated.");
-        reloadPreview();
-      } catch {
-        setBusy(null);
-        setUploadPhase("idle");
-        setMessage("The upload finished, but the processing request failed.");
+      if (!response.ok) {
+        throw new Error(result.error ?? "Video processing failed.");
       }
-    };
 
-    xhr.onerror = () => {
+      setMessage("Homepage video updated.");
+      reloadPreview();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Homepage upload failed.");
+    } finally {
       setBusy(null);
       setUploadPhase("idle");
-      setMessage("Upload failed before the server confirmed the file.");
-    };
-
-    xhr.ontimeout = () => {
-      setBusy(null);
-      setUploadPhase("idle");
-      setMessage("The file upload timed out before the server confirmed it.");
-    };
-
-    // This request only transfers the file now. FFmpeg runs in the separate
-    // PATCH request after the server confirms the upload is fully stored.
-    xhr.timeout = 30 * 60 * 1000;
-    xhr.send(file);
+    }
   }
 
   async function connectLink() {
@@ -221,7 +210,9 @@ export function HomepageLandingEditor() {
 
         const uploadButton = doc.createElement("button");
         uploadButton.type = "button";
-        uploadButton.textContent = busy === slot.id ? "PROCESSING…" : "UPLOAD FILE";
+        uploadButton.textContent = busy === slot.id
+          ? uploadPhase === "processing" ? "PROCESSING…" : "UPLOADING…"
+          : "UPLOAD FILE";
         uploadButton.disabled = busy === slot.id;
         uploadButton.addEventListener("click", (event) => {
           event.preventDefault();
