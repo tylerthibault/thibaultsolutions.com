@@ -201,6 +201,25 @@
       .footer-row{display:grid}
     }
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  
+    /* Populated homepage slots: real media replaces every placeholder layer. */
+    [data-home-slot].has-slot-video > .hero-portrait,
+    [data-home-slot].has-slot-video > .hero-video-copy,
+    [data-home-slot].has-slot-video > .screen-label,
+    [data-home-slot].has-slot-video > .screen-hook,
+    [data-home-slot].has-slot-video > .angle,
+    [data-home-slot].has-slot-video > .headline {
+      display:none !important;
+    }
+    [data-home-slot].has-slot-video > .slot-video,
+    [data-home-slot].has-slot-video > .slot-embed {
+      z-index:3 !important;
+    }
+    .portfolio-screen.has-slot-video::after,
+    .campaign-screen.has-slot-video::after {
+      display:none !important;
+    }
+
   </style>
 </head>
 <body>
