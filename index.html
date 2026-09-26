@@ -40,6 +40,8 @@
     .nav nav a:hover{color:#fff}
     .nav-cta{justify-self:end;border:1px solid #404a56;border-radius:8px;padding:11px 14px;font-size:10px;font-weight:700}
     .nav-cta span{color:var(--lime)}
+    .nav.shell{width:min(1920px,calc(100% - 32px));margin:16px auto 0;padding-inline:16px;border:1px solid var(--line);border-radius:14px}
+
 
     .hero{position:relative;overflow:hidden;border-bottom:2px solid var(--black);background:var(--yellow);color:var(--black)}
     .hero::before{content:"";position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(16,16,16,.075) 1px,transparent 1px),linear-gradient(90deg,rgba(16,16,16,.075) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(to right,#000 0%,rgba(0,0,0,.9) 58%,transparent 86%);pointer-events:none}
@@ -165,6 +167,7 @@
     }
     @media(max-width:800px){
       .shell{width:min(100% - 32px,1400px)}
+      .nav.shell{width:calc(100% - 20px);margin-top:10px;padding-inline:10px}
       .section{padding:80px 0}
       .hero-grid{min-height:auto;padding:55px 0}
       .hero h1{font-size:clamp(52px,14vw,82px)}
