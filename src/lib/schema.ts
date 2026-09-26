@@ -76,6 +76,13 @@ export const mediaAssets = pgTable("media_assets", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("media_owner_idx").on(t.ownerId)]);
 
+export const homepageUgcSlots = pgTable("homepage_ugc_slots", {
+  slot: text("slot").primaryKey(),
+  assetId: uuid("asset_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+  updatedBy: text("updated_by").references(() => user.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const projects = pgTable("projects", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
@@ -207,4 +214,4 @@ export const feedbackComments = pgTable("feedback_comments", {
   index("feedback_comment_video_idx").on(t.videoId, t.createdAt),
 ]);
 
-export const schema = { user, session, account, verification, mediaAssets, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, creativeCircleInvitations, feedbackVideos, feedbackAssignments, feedbackViews, feedbackComments };
+export const schema = { user, session, account, verification, mediaAssets, homepageUgcSlots, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, creativeCircleInvitations, feedbackVideos, feedbackAssignments, feedbackViews, feedbackComments };

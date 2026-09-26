@@ -26,7 +26,7 @@ export async function CcNav({ userEmail }: { userEmail?: string }) {
     <div style={{display:"flex",alignItems:"center",gap:8}}>
       {labAccess&&<Link className="btn" href="/creative-circle/lab">VIDEO LAB</Link>}
       {feedbackAccess&&<Link className="btn" href="/creative-circle/review">FEEDBACK LAB</Link>}
-      {admin&&<Link className="btn" href="/creative-circle/admin">ACCESS</Link>}
+      {admin&&<Link className="btn" href="/creative-circle/admin">ADMIN</Link>}
       <Link className="btn" href="/">THIBAULT SOLUTIONS ↗</Link>
     </div>
   </header>;
