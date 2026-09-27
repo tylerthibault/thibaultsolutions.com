@@ -104,6 +104,23 @@
     .has-slot-video>.headline,
     .hero-screen.has-slot-video .hero-video-copy{display:none}\n    .portfolio-screen::after,.campaign-screen::after{z-index:1}\n    .portfolio-screen .screen-label,.portfolio-screen .screen-hook,.campaign-screen .angle,.campaign-screen .headline{z-index:2}
 
+    .portfolio-item.is-empty-hidden,
+    .campaign-card.is-empty-hidden{display:none}
+    .portfolio-item.is-coming-soon a{pointer-events:none}
+    .portfolio-row:has(.is-empty-hidden){grid-template-columns:repeat(auto-fit,minmax(160px,190px));justify-content:center}
+    .campaign-phones:has(.is-empty-hidden){grid-template-columns:repeat(auto-fit,minmax(160px,205px));justify-content:start}
+    [data-home-slot].is-coming-soon::after{display:none!important}
+    [data-home-slot].is-coming-soon>.screen-label,
+    [data-home-slot].is-coming-soon>.screen-hook,
+    [data-home-slot].is-coming-soon>.angle,
+    [data-home-slot].is-coming-soon>.headline{display:none!important}
+    .slot-coming-soon{position:absolute;z-index:3;inset:0;display:grid;place-content:center;gap:10px;padding:18px;text-align:center;background:
+      radial-gradient(circle at 50% 35%,rgba(89,104,255,.3),transparent 34%),
+      linear-gradient(160deg,#171d28,#0b0f15 72%);color:#fff}
+    .slot-coming-soon::before{content:"";position:absolute;inset:12px;border:1px solid rgba(255,255,255,.12);border-radius:16px;pointer-events:none}
+    .slot-coming-soon small{position:relative;font-size:7px;letter-spacing:.16em;font-weight:800;color:#9ca6b2}
+    .slot-coming-soon strong{position:relative;font-size:26px;line-height:.92;letter-spacing:-.055em;color:var(--lime)}
+
     .campaigns{padding-top:110px;background:var(--yellow);color:var(--black)}\n    .campaigns>.shell .section-kicker{color:#292929}.campaigns>.shell .section-kicker::before{background:var(--blue)}\n    .campaigns>.shell .section-title span{color:var(--blue)}\n    .campaigns>.shell .section-lead{color:#2b2b2b}
     .campaign{border-top:1px solid rgba(16,16,16,.28);padding:88px 0}
     .campaign-grid{display:grid;grid-template-columns:.72fr 1.28fr;gap:70px;align-items:center}
@@ -415,6 +432,44 @@
   </main>
   <script>
     (() => {
+      function applyEmptyPhoneStates(slots) {
+        const slotStatus = new Map(slots.map((slot) => [slot.id, Boolean(slot.hasMedia)]));
+        const candidates = Array.from(
+          document.querySelectorAll(".portfolio-screen[data-home-slot], .campaign-screen[data-home-slot]")
+        );
+        const empty = [];
+
+        for (const screen of candidates) {
+          const slotId = screen.dataset.homeSlot;
+          if (!slotStatus.has(slotId)) continue;
+
+          const card = screen.closest(".portfolio-item, .campaign-card");
+          if (!card) continue;
+
+          card.classList.remove("is-empty-hidden", "is-coming-soon");
+          screen.classList.remove("is-coming-soon");
+          screen.querySelector(".slot-coming-soon")?.remove();
+
+          if (!slotStatus.get(slotId)) empty.push({ screen, card });
+        }
+
+        if (!empty.length) return;
+
+        const [comingSoon, ...hidden] = empty;
+        comingSoon.card.classList.add("is-coming-soon");
+        comingSoon.screen.classList.add("is-coming-soon");
+        comingSoon.screen.setAttribute("aria-label", "Coming soon");
+
+        const placeholder = document.createElement("div");
+        placeholder.className = "slot-coming-soon";
+        placeholder.innerHTML = "<small>NEW WORK IN PROGRESS</small><strong>COMING<br>SOON</strong>";
+        comingSoon.screen.appendChild(placeholder);
+
+        for (const entry of hidden) {
+          entry.card.classList.add("is-empty-hidden");
+        }
+      }
+
       async function hydrateHomepageMedia() {
         try {
           const response = await fetch("/api/homepage/slots", { cache: "no-store" });
@@ -476,6 +531,8 @@
             screen.prepend(video);
             screen.classList.add("has-slot-video");
           }
+
+          applyEmptyPhoneStates(data.slots ?? []);
         } catch {
           // The static placeholders remain usable if the media API is unavailable.
         }
