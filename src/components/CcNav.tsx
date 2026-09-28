@@ -6,6 +6,7 @@ import { user as users } from "@/src/lib/schema";
 
 export async function CcNav({ userEmail }: { userEmail?: string }) {
   const admin = isCreativeCircleAdmin(userEmail);
+  const publicGuest = !userEmail;
   let labAccess = admin;
   let feedbackAccess = admin;
   let identityLabel = userEmail;
@@ -22,10 +23,10 @@ export async function CcNav({ userEmail }: { userEmail?: string }) {
   }
 
   return <header className="cc-nav">
-    <Link className="cc-brand" href="/creative-circle"><b>CC</b><span className="cc-brand-copy"><strong>CREATIVE CIRCLE</strong>{identityLabel&&<small>{identityLabel}</small>}</span></Link>
+    <Link className="cc-brand" href={publicGuest ? "/creative-circle/review" : "/creative-circle"}><b>CC</b><span className="cc-brand-copy"><strong>CREATIVE CIRCLE</strong>{identityLabel ? <small>{identityLabel}</small> : <small>OPEN REVIEW</small>}</span></Link>
     <div style={{display:"flex",alignItems:"center",gap:8}}>
       {labAccess&&<Link className="btn" href="/creative-circle/lab">VIDEO LAB</Link>}
-      {feedbackAccess&&<Link className="btn" href="/creative-circle/review">FEEDBACK LAB</Link>}
+      {(feedbackAccess || publicGuest)&&<Link className="btn" href="/creative-circle/review">FEEDBACK LAB</Link>}
       {admin&&<Link className="btn" href="/creative-circle/admin">SITE ADMIN</Link>}
       {admin&&<Link className="btn" href="/creative-circle/admin/access">ACCESS</Link>}
       <Link className="btn" href="/">THIBAULT SOLUTIONS ↗</Link>
