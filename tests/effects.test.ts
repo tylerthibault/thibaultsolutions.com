@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest";
+import { defaultsForEffect, effectRegistry, effectStackSchema } from "../src/lib/effects/registry";
+import { filterForEffect } from "../src/lib/effects/export";
+describe("Creative Circle effects",()=>{it("registers exactly 52 unique effects",()=>{expect(effectRegistry).toHaveLength(52);expect(new Set(effectRegistry.map(x=>x.id)).size).toBe(52)});it("builds a distinct non-placeholder export mapping for every effect",()=>{const filters=effectRegistry.map((d,i)=>filterForEffect({instanceId:String(i),effectId:d.id,enabled:true,seed:i+1,params:defaultsForEffect(d.id)}));expect(filters.every(x=>x&&x!=="null")).toBe(true);expect(new Set(filters).size).toBe(52)});it("rejects out-of-range effect parameters",()=>{const result=effectStackSchema.safeParse([{instanceId:"x",effectId:"neon-edge-trace",enabled:true,seed:1,params:{sensitivity:99}}]);expect(result.success).toBe(false)})});
