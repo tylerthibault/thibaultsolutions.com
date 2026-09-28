@@ -11,7 +11,7 @@ import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { parseFeedbackLink, resolveFeedbackThumbnail } from "@/src/lib/feedback-links";
 import { getHomepageUgcSlot } from "@/src/lib/homepage-slots";
-import { homepageUgcSlots, mediaAssets } from "@/src/lib/schema";
+import { feedbackVideos, homepageUgcSlots, mediaAssets } from "@/src/lib/schema";
 import { ensureStorage, fileSize, removeStored, storagePath } from "@/src/lib/storage";
 import { makeBrowserPlaybackCopy, makeThumbnail, probeVideo } from "@/src/lib/video";
 
@@ -49,6 +49,51 @@ async function removeAsset(asset: Awaited<ReturnType<typeof currentSlot>>) {
     removeStored("thumbnails", asset.thumbnailKey),
   ]);
   await db.delete(mediaAssets).where(eq(mediaAssets.id, asset.assetId));
+}
+
+async function syncHomepageFeedbackVideo(input: {
+  slot: string;
+  title: string;
+  ownerId: string;
+  sourceType: "upload" | "link";
+  assetId: string | null;
+  sourceUrl: string | null;
+  provider: string | null;
+  thumbnailUrl: string | null;
+  durationMs: number | null;
+}) {
+  const updatedAt = new Date();
+  const [video] = await db.insert(feedbackVideos).values({
+    ownerId: input.ownerId,
+    title: input.title,
+    sourceType: input.sourceType,
+    assetId: input.assetId,
+    sourceUrl: input.sourceUrl,
+    provider: input.provider,
+    thumbnailUrl: input.thumbnailUrl,
+    durationMs: input.durationMs,
+    isPublic: true,
+    status: "open",
+    homepageSlot: input.slot,
+    updatedAt,
+  }).onConflictDoUpdate({
+    target: feedbackVideos.homepageSlot,
+    set: {
+      ownerId: input.ownerId,
+      title: input.title,
+      sourceType: input.sourceType,
+      assetId: input.assetId,
+      sourceUrl: input.sourceUrl,
+      provider: input.provider,
+      thumbnailUrl: input.thumbnailUrl,
+      durationMs: input.durationMs,
+      isPublic: true,
+      status: "open",
+      updatedAt,
+    },
+  }).returning({ id: feedbackVideos.id });
+
+  return video;
 }
 
 export async function POST(request: Request, ctx: { params: Promise<{ slot: string }> }) {
@@ -223,6 +268,18 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ slot: str
       },
     });
 
+    const feedbackVideo = await syncHomepageFeedbackVideo({
+      slot,
+      title: definition.title,
+      ownerId: current.id,
+      sourceType: "upload",
+      assetId: asset.id,
+      sourceUrl: null,
+      provider: null,
+      thumbnailUrl: null,
+      durationMs: meta.durationMs,
+    });
+
     if (previous?.assetId && previous.assetId !== asset.id) await removeAsset(previous);
 
     console.info("Homepage UGC processing completed", {
@@ -247,6 +304,8 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ slot: str
         durationMs: meta.durationMs,
         mediaUrl: `/api/homepage/slots/${slot}/media`,
         thumbnailUrl: `/api/homepage/slots/${slot}/thumbnail`,
+        feedbackVideoId: feedbackVideo.id,
+        feedbackUrl: `/creative-circle/review/video/${feedbackVideo.id}`,
         updatedAt: updatedAt.toISOString(),
       },
     }, { status: 201 });
@@ -310,6 +369,18 @@ export async function PUT(request: Request, ctx: { params: Promise<{ slot: strin
     },
   });
 
+  const feedbackVideo = await syncHomepageFeedbackVideo({
+    slot,
+    title: definition.title,
+    ownerId: current.id,
+    sourceType: "link",
+    assetId: null,
+    sourceUrl: parsed.canonicalUrl,
+    provider: parsed.provider,
+    thumbnailUrl,
+    durationMs: null,
+  });
+
   await removeAsset(previous);
 
   return NextResponse.json({
@@ -325,6 +396,8 @@ export async function PUT(request: Request, ctx: { params: Promise<{ slot: strin
       durationMs: null,
       mediaUrl: null,
       thumbnailUrl,
+      feedbackVideoId: feedbackVideo.id,
+      feedbackUrl: `/creative-circle/review/video/${feedbackVideo.id}`,
       updatedAt: updatedAt.toISOString(),
     },
   });
@@ -338,6 +411,7 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ slot: st
   if (!getHomepageUgcSlot(slot)) return NextResponse.json({ error: "Unknown homepage slot." }, { status: 404 });
 
   const previous = await currentSlot(slot);
+  await db.delete(feedbackVideos).where(eq(feedbackVideos.homepageSlot, slot));
   await db.delete(homepageUgcSlots).where(eq(homepageUgcSlots.slot, slot));
   await removeAsset(previous);
   return NextResponse.json({ ok: true });
