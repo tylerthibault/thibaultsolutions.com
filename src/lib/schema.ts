@@ -175,7 +175,7 @@ export const feedbackVideos = pgTable("feedback_videos", {
   provider: text("provider"),
   thumbnailUrl: text("thumbnail_url"),
   durationMs: integer("duration_ms"),
-  isPublic: boolean("is_public").notNull().default(false),
+  isPublic: boolean("is_public").notNull().default(true),
   status: text("status").notNull().default("open"),
   homepageSlot: text("homepage_slot").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
