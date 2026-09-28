@@ -29,6 +29,12 @@ type PlaybackStatus = "checking" | "preparing" | "ready" | "missing" | "error";
 type MediaOrientation = "portrait" | "landscape";
 type NoteView = "open" | "resolved";
 
+type TimelineData = {
+  durationMs: number;
+  waveform: number[];
+  frames: Array<{ index: number; timeMs: number; url: string }>;
+};
+
 type CommentMoment = {
   key: string;
   timestampMs: number | null;
@@ -121,6 +127,8 @@ export function FeedbackReview({
   const [currentMs, setCurrentMs] = useState(0);
   const [capturedMs, setCapturedMs] = useState<number | null>(null);
   const [timelineReady, setTimelineReady] = useState(false);
+  const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
   const [tiktokTimeReady, setTiktokTimeReady] = useState(false);
   const [tiktokDurationMs, setTiktokDurationMs] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -274,6 +282,33 @@ export function FeedbackReview({
       }
     };
   }, [video.id, video.sourceType, playbackAttempt]);
+
+  useEffect(() => {
+    if (video.sourceType !== "upload" || playbackStatus !== "ready") {
+      setTimelineData(null);
+      return;
+    }
+
+    let cancelled = false;
+    setTimelineLoading(true);
+
+    fetch(`/api/feedback/videos/${video.id}/timeline`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Timeline unavailable");
+        return response.json() as Promise<TimelineData>;
+      })
+      .then((data) => {
+        if (!cancelled) setTimelineData(data);
+      })
+      .catch(() => {
+        if (!cancelled) setTimelineData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setTimelineLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [video.id, video.sourceType, playbackStatus, playbackAttempt]);
 
   useEffect(() => {
     if (video.provider !== "tiktok") return;
@@ -439,6 +474,28 @@ export function FeedbackReview({
     }
   }
 
+  function scrubTimeline(ms: number) {
+    const next = Math.max(0, Math.min(markerDurationMs ?? ms, ms));
+    setCurrentMs(next);
+
+    if (video.sourceType === "upload" && player.current && playbackStatus === "ready") {
+      player.current.currentTime = next / 1000;
+      return;
+    }
+
+    if (video.provider === "tiktok") {
+      tiktokHeldAtEnd.current = false;
+      sendTikTokCommand("seekTo", next / 1000);
+    }
+  }
+
+  function timelineFrameFor(ms: number | null) {
+    if (!timelineData?.frames.length || ms === null) return thumbnailSrc;
+    return timelineData.frames.reduce((closest, frame) =>
+      Math.abs(frame.timeMs - ms) < Math.abs(closest.timeMs - ms) ? frame : closest
+    ).url;
+  }
+
   function scrollMoments(direction: -1 | 1) {
     momentRail.current?.scrollBy({ left: direction * 260, behavior: "smooth" });
   }
@@ -592,6 +649,55 @@ export function FeedbackReview({
         </div>
       </div>
 
+      {video.sourceType === "upload" && markerDurationMs && markerDurationMs > 0 && <div className="feedback-editor-timeline">
+        <div className="feedback-editor-timeline-head">
+          <div><span className="micro muted">DETAIL TIMELINE</span><strong>{timeLabel(currentMs)} / {timeLabel(markerDurationMs)}</strong></div>
+          <span className="micro muted">{timelineLoading ? "BUILDING THUMBNAILS + WAVEFORM…" : timelineData ? "SCRUB TO REVIEW" : "TIMELINE"}</span>
+        </div>
+
+        <div className="feedback-editor-strip" aria-hidden="true">
+          {timelineData?.frames?.length
+            ? timelineData.frames.map((frame) => <img key={frame.index} src={frame.url} alt="" />)
+            : Array.from({ length: 8 }, (_, index) => <span className="feedback-editor-frame-placeholder" key={index} />)}
+        </div>
+
+        <div className="feedback-waveform-shell">
+          <div className="feedback-waveform" aria-hidden="true">
+            {timelineData?.waveform?.length
+              ? timelineData.waveform.map((value, index) => <i key={index} style={{ height: `${Math.max(8, Math.round(value * 100))}%` }} />)
+              : Array.from({ length: 90 }, (_, index) => <i key={index} style={{ height: `${18 + ((index * 17) % 48)}%` }} className="placeholder" />)}
+          </div>
+          <div className="feedback-editor-comment-markers">
+            {moments.filter((moment) => moment.timestampMs !== null).map((moment) => {
+              const timestamp = moment.timestampMs ?? 0;
+              const left = Math.min(100, Math.max(0, (timestamp / markerDurationMs) * 100));
+              return <button
+                key={moment.key}
+                type="button"
+                className={moment.openCount > 0 ? "feedback-editor-comment-marker" : "feedback-editor-comment-marker resolved"}
+                style={{ left: `${left}%` }}
+                title={`${moment.count} comment${moment.count === 1 ? "" : "s"} at ${timeLabel(timestamp)}`}
+                onClick={() => seek(timestamp)}
+              ><span>{moment.count}</span></button>;
+            })}
+          </div>
+          <input
+            className="feedback-editor-scrubber"
+            type="range"
+            min="0"
+            max={markerDurationMs}
+            step="50"
+            value={Math.min(currentMs, markerDurationMs)}
+            onChange={(event) => scrubTimeline(Number(event.currentTarget.value))}
+            aria-label="Scrub feedback timeline"
+          />
+        </div>
+
+        <div className="feedback-editor-ruler" aria-hidden="true">
+          {[0, .25, .5, .75, 1].map((fraction) => <span key={fraction}>{timeLabel(Math.round(markerDurationMs * fraction))}</span>)}
+        </div>
+      </div>}
+
       {moments.length > 0 && <div className="feedback-moments-section">
         <div className="feedback-moments-title">
           <span>▣ COMMENTED MOMENTS</span>
@@ -609,7 +715,7 @@ export function FeedbackReview({
               title={moment.timestampMs === null ? moment.firstComment.body : `Jump to ${timeLabel(moment.timestampMs)}`}
             >
               <span className="feedback-moment-image">
-                {thumbnailSrc ? <img src={thumbnailSrc} alt="" /> : <span className="feedback-moment-placeholder">CC</span>}
+                {timelineFrameFor(moment.timestampMs) ? <img src={timelineFrameFor(moment.timestampMs) ?? ""} alt="" /> : <span className="feedback-moment-placeholder">CC</span>}
                 <span className="feedback-moment-count">● {moment.count}</span>
                 <span className="feedback-moment-time">{timeLabel(moment.timestampMs)}</span>
               </span>
