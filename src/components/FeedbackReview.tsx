@@ -5,10 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type Comment = {
   id: string;
   videoId: string;
-  authorId: string;
+  authorId: string | null;
   authorName: string;
-  authorEmail: string;
   timestampMs: number | null;
+  timestampEndMs: number | null;
   body: string;
   resolved: boolean;
   createdAt: string | Date;
@@ -98,8 +98,8 @@ export function FeedbackReview({
 }: {
   video: Video;
   initialComments: Comment[];
-  currentUser: { id: string; name: string; email: string };
-  role: "owner" | "reviewer";
+  currentUser: { id: string; name: string; email: string } | null;
+  role: "owner" | "reviewer" | "guest";
 }) {
   const player = useRef<HTMLVideoElement | null>(null);
   const socialFrame = useRef<HTMLIFrameElement | null>(null);
@@ -116,6 +116,8 @@ export function FeedbackReview({
     updatedAt: new Date(comment.updatedAt).toISOString(),
   })));
   const [body, setBody] = useState("");
+  const [displayName, setDisplayName] = useState(currentUser?.name ?? "");
+  const [reviewerKey, setReviewerKey] = useState("");
   const [currentMs, setCurrentMs] = useState(0);
   const [capturedMs, setCapturedMs] = useState<number | null>(null);
   const [timelineReady, setTimelineReady] = useState(false);
@@ -190,6 +192,23 @@ export function FeedbackReview({
     );
     return true;
   }
+
+  useEffect(() => {
+    if (currentUser) {
+      setDisplayName(currentUser.name);
+      return;
+    }
+
+    const savedName = window.localStorage.getItem("feedbackDisplayName") ?? "";
+    let savedReviewerKey = window.localStorage.getItem("feedbackReviewerId") ?? "";
+    if (!savedReviewerKey) {
+      savedReviewerKey = window.crypto.randomUUID();
+      window.localStorage.setItem("feedbackReviewerId", savedReviewerKey);
+    }
+
+    setDisplayName(savedName);
+    setReviewerKey(savedReviewerKey);
+  }, [currentUser?.id, currentUser?.name]);
 
   useEffect(() => {
     if (video.sourceType !== "upload") return;
@@ -372,7 +391,12 @@ export function FeedbackReview({
     const response = await fetch(`/api/feedback/videos/${video.id}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body, timestampMs }),
+      body: JSON.stringify({
+        body,
+        timestampMs,
+        displayName: role === "guest" ? displayName.trim() || undefined : undefined,
+        reviewerKey: role === "guest" ? reviewerKey || undefined : undefined,
+      }),
     });
     const result = await response.json().catch(() => ({}));
     setBusy(false);
@@ -387,6 +411,11 @@ export function FeedbackReview({
       createdAt: new Date(result.comment.createdAt).toISOString(),
       updatedAt: new Date(result.comment.updatedAt).toISOString(),
     }]);
+    if (role === "guest") {
+      const rememberedName = displayName.trim();
+      if (rememberedName) window.localStorage.setItem("feedbackDisplayName", rememberedName);
+      else window.localStorage.removeItem("feedbackDisplayName");
+    }
     setBody("");
     setCapturedMs(null);
     setGeneralNote(false);
@@ -529,6 +558,19 @@ export function FeedbackReview({
                 This platform does not expose a reliable playback timestamp here, so this feedback will be saved as a general note.
               </p>}
 
+              {role === "guest" && <div className="field feedback-guest-name">
+                <label htmlFor="feedback-display-name">Name or initials <span className="muted">(optional)</span></label>
+                <input
+                  id="feedback-display-name"
+                  className="input"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="e.g. Tyler T."
+                  maxLength={80}
+                  autoComplete="name"
+                />
+              </div>}
+
               <textarea
                 ref={commentInput}
                 className="feedback-textarea"
@@ -537,6 +579,7 @@ export function FeedbackReview({
                 placeholder="What should change here?"
                 maxLength={2000}
               />
+              {role === "guest" && <p className="feedback-privacy-note muted">Basic technical information may be recorded for security and spam prevention.</p>}
               {error && <div className="error">{error}</div>}
               <div className="feedback-composer-actions">
                 <button className="btn" type="button" onClick={() => setComposerOpen(false)}>CANCEL</button>
@@ -626,7 +669,7 @@ export function FeedbackReview({
         </article>)}
       </div>
 
-      <div className="feedback-reviewer-id micro muted">SIGNED IN AS {currentUser.name.toUpperCase()}</div>
+      <div className="feedback-reviewer-id micro muted">{currentUser ? `SIGNED IN AS ${currentUser.name.toUpperCase()}` : "PUBLIC REVIEWER · NO LOGIN REQUIRED"}</div>
     </aside>
   </div>;
 }
