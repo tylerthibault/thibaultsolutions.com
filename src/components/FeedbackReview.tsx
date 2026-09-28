@@ -128,7 +128,6 @@ export function FeedbackReview({
   const [capturedMs, setCapturedMs] = useState<number | null>(null);
   const [timelineReady, setTimelineReady] = useState(false);
   const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
-  const [timelineLoading, setTimelineLoading] = useState(false);
   const [tiktokTimeReady, setTiktokTimeReady] = useState(false);
   const [tiktokDurationMs, setTiktokDurationMs] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -202,21 +201,22 @@ export function FeedbackReview({
   }
 
   useEffect(() => {
-    if (currentUser) {
-      setDisplayName(currentUser.name);
-      return;
-    }
+    if (currentUser) return;
 
-    const savedName = window.localStorage.getItem("feedbackDisplayName") ?? "";
-    let savedReviewerKey = window.localStorage.getItem("feedbackReviewerId") ?? "";
-    if (!savedReviewerKey) {
-      savedReviewerKey = window.crypto.randomUUID();
-      window.localStorage.setItem("feedbackReviewerId", savedReviewerKey);
-    }
+    const timer = window.setTimeout(() => {
+      const savedName = window.localStorage.getItem("feedbackDisplayName") ?? "";
+      let savedReviewerKey = window.localStorage.getItem("feedbackReviewerId") ?? "";
+      if (!savedReviewerKey) {
+        savedReviewerKey = window.crypto.randomUUID();
+        window.localStorage.setItem("feedbackReviewerId", savedReviewerKey);
+      }
 
-    setDisplayName(savedName);
-    setReviewerKey(savedReviewerKey);
-  }, [currentUser?.id, currentUser?.name]);
+      setDisplayName(savedName);
+      setReviewerKey(savedReviewerKey);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [currentUser]);
 
   useEffect(() => {
     if (video.sourceType !== "upload") return;
@@ -284,13 +284,9 @@ export function FeedbackReview({
   }, [video.id, video.sourceType, playbackAttempt]);
 
   useEffect(() => {
-    if (video.sourceType !== "upload" || playbackStatus !== "ready") {
-      setTimelineData(null);
-      return;
-    }
+    if (video.sourceType !== "upload" || playbackStatus !== "ready") return;
 
     let cancelled = false;
-    setTimelineLoading(true);
 
     fetch(`/api/feedback/videos/${video.id}/timeline`, { cache: "no-store" })
       .then(async (response) => {
@@ -300,12 +296,7 @@ export function FeedbackReview({
       .then((data) => {
         if (!cancelled) setTimelineData(data);
       })
-      .catch(() => {
-        if (!cancelled) setTimelineData(null);
-      })
-      .finally(() => {
-        if (!cancelled) setTimelineLoading(false);
-      });
+      .catch(() => undefined);
 
     return () => { cancelled = true; };
   }, [video.id, video.sourceType, playbackStatus, playbackAttempt]);
@@ -673,7 +664,7 @@ export function FeedbackReview({
       {video.sourceType === "upload" && markerDurationMs && markerDurationMs > 0 && <div className="feedback-editor-timeline">
         <div className="feedback-editor-timeline-head">
           <div><span className="micro muted">DETAIL TIMELINE</span><strong>{timeLabel(currentMs)} / {timeLabel(markerDurationMs)}</strong></div>
-          <span className="micro muted">{timelineLoading ? "BUILDING THUMBNAILS + WAVEFORM…" : timelineData ? "SCRUB TO REVIEW" : "TIMELINE"}</span>
+          <span className="micro muted">{timelineData ? "SCRUB TO REVIEW" : "BUILDING THUMBNAILS + WAVEFORM…"}</span>
         </div>
 
         <div className="feedback-editor-strip" aria-hidden="true">
