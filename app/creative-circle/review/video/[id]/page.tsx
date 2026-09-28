@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
-import { requireSectionUser } from "@/src/lib/auth";
+import { and, asc, eq } from "drizzle-orm";
+import { getSession } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { getFeedbackVideoAccess } from "@/src/lib/feedback-access";
+import { getFeedbackRequestAccess } from "@/src/lib/feedback-public";
 import { parseFeedbackLink } from "@/src/lib/feedback-links";
 import { feedbackAssignments, feedbackComments, feedbackViews, user as users } from "@/src/lib/schema";
 import { CcNav } from "@/src/components/CcNav";
@@ -17,34 +17,43 @@ function durationLabel(durationMs: number | null, provider: string | null) {
 }
 
 export default async function FeedbackVideoPage({ params }: { params: Promise<{ id: string }> }) {
-  const current = await requireSectionUser("feedback");
+  const session = await getSession();
+  const current = session?.user ?? null;
   const { id } = await params;
-  const access = await getFeedbackVideoAccess(id, current.id);
+  const access = await getFeedbackRequestAccess(id, current?.id);
   if (!access) notFound();
 
-  const [owner] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, access.video.ownerId)).limit(1);
-  const [comments, assignments] = await Promise.all([
+  const [owner] = await db.select({ name: users.name }).from(users)
+    .where(eq(users.id, access.video.ownerId)).limit(1);
+
+  const [rawComments, assignments] = await Promise.all([
     db.select({
       id: feedbackComments.id,
       videoId: feedbackComments.videoId,
       authorId: feedbackComments.authorId,
-      authorName: users.name,
-      authorEmail: users.email,
+      savedDisplayName: feedbackComments.displayName,
+      accountName: users.name,
       timestampMs: feedbackComments.timestampMs,
+      timestampEndMs: feedbackComments.timestampEndMs,
       body: feedbackComments.body,
       resolved: feedbackComments.resolved,
       createdAt: feedbackComments.createdAt,
       updatedAt: feedbackComments.updatedAt,
     }).from(feedbackComments)
-      .innerJoin(users, eq(feedbackComments.authorId, users.id))
-      .where(eq(feedbackComments.videoId, id))
+      .leftJoin(users, eq(feedbackComments.authorId, users.id))
+      .where(and(eq(feedbackComments.videoId, id), eq(feedbackComments.status, "visible")))
       .orderBy(asc(feedbackComments.createdAt)),
     db.select({ id: feedbackAssignments.id })
       .from(feedbackAssignments)
       .where(eq(feedbackAssignments.videoId, id)),
   ]);
 
-  if (access.role === "reviewer") {
+  const comments = rawComments.map(({ savedDisplayName, accountName, ...comment }) => ({
+    ...comment,
+    authorName: savedDisplayName?.trim() || accountName?.trim() || "Anonymous",
+  }));
+
+  if (current && access.role === "reviewer") {
     const seenAt = new Date();
     await db.insert(feedbackViews)
       .values({ videoId: id, viewerUserId: current.id, seenAt })
@@ -60,16 +69,20 @@ export default async function FeedbackVideoPage({ params }: { params: Promise<{ 
 
   const linked = access.video.sourceUrl ? parseFeedbackLink(access.video.sourceUrl) : null;
   const addedLabel = access.video.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const reviewerLabel = access.role === "guest"
+    ? "PUBLIC REVIEW"
+    : access.role === "owner"
+      ? "YOUR VIDEO"
+      : `FROM ${owner?.name ?? "YOUR CIRCLE"}`;
 
-  return <><CcNav userEmail={current.email}/><main className="cc-main feedback-review-shell">
+  return <><CcNav userEmail={current?.email}/><main className="cc-main feedback-review-shell">
     <div className="feedback-review-head">
       <div>
-        <span className="micro muted">{access.role === "owner" ? "YOUR VIDEO" : `FROM ${owner?.name ?? "YOUR CIRCLE"}`}</span>
+        <span className="micro muted">{reviewerLabel}</span>
         <h1>{access.video.title}</h1>
         <div className="feedback-video-meta">
           <span>◷ {durationLabel(access.video.durationMs, access.video.provider)}</span>
-          <i>•</i>
-          <span>♙ {assignments.length} {assignments.length === 1 ? "reviewer" : "reviewers"}</span>
+          {access.role !== "guest" && <><i>•</i><span>♙ {assignments.length} {assignments.length === 1 ? "reviewer" : "reviewers"}</span></>}
           <i>•</i>
           <span>▣ {comments.length} {comments.length === 1 ? "comment" : "comments"}</span>
           <i>•</i>
@@ -93,7 +106,7 @@ export default async function FeedbackVideoPage({ params }: { params: Promise<{ 
         thumbnailUrl: access.video.thumbnailUrl,
       }}
       initialComments={comments}
-      currentUser={{ id: current.id, name: current.name, email: current.email }}
+      currentUser={current ? { id: current.id, name: current.name, email: current.email } : null}
       role={access.role}
     />
   </main></>;
