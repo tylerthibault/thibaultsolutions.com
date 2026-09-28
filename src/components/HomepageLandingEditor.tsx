@@ -37,7 +37,10 @@ export function HomepageLandingEditor() {
   }, []);
 
   useEffect(() => {
-    void refreshSlots();
+    const timer = window.setTimeout(() => {
+      void refreshSlots();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [refreshSlots]);
 
   function reloadPreview() {
