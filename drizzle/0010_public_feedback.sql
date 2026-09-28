@@ -1,5 +1,6 @@
 ALTER TABLE "feedback_videos" ADD COLUMN IF NOT EXISTS "homepage_slot" text;
 CREATE UNIQUE INDEX IF NOT EXISTS "feedback_video_homepage_slot_unique" ON "feedback_videos" ("homepage_slot");
+UPDATE "feedback_videos" SET "is_public" = true;
 
 ALTER TABLE "feedback_comments" ALTER COLUMN "author_id" DROP NOT NULL;
 ALTER TABLE "feedback_comments" DROP CONSTRAINT IF EXISTS "feedback_comments_author_id_user_id_fk";
