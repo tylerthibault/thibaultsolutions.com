@@ -165,14 +165,29 @@ export const feedbackAssignments = pgTable("feedback_assignments", {
 export const feedbackComments = pgTable("feedback_comments", {
   id: uuid("id").defaultRandom().primaryKey(),
   videoId: uuid("video_id").notNull().references(() => feedbackVideos.id, { onDelete: "cascade" }),
-  authorId: text("author_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  authorId: text("author_id").references(() => user.id, { onDelete: "set null" }),
+  displayName: text("display_name"),
+  reviewerKey: text("reviewer_key"),
   timestampMs: integer("timestamp_ms"),
+  timestampEndMs: integer("timestamp_end_ms"),
   body: text("body").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  status: text("status").notNull().default("visible"),
   resolved: boolean("resolved").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("feedback_comment_video_idx").on(t.videoId, t.createdAt),
+  index("feedback_comment_ip_idx").on(t.ipAddress, t.createdAt),
+  index("feedback_comment_reviewer_idx").on(t.reviewerKey, t.createdAt),
 ]);
 
-export const schema = { user, session, account, verification, mediaAssets, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, feedbackVideos, feedbackAssignments, feedbackComments };
+export const blockedFeedbackIps = pgTable("blocked_feedback_ips", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ipAddress: text("ip_address").notNull().unique(),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const schema = { user, session, account, verification, mediaAssets, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, feedbackVideos, feedbackAssignments, feedbackComments, blockedFeedbackIps };
