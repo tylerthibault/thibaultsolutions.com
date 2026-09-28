@@ -2,9 +2,9 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { eq } from "drizzle-orm";
-import { apiSectionUser } from "@/src/lib/api-auth";
+import { apiSessionUser } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
-import { getFeedbackVideoAccess } from "@/src/lib/feedback-access";
+import { getFeedbackRequestAccess } from "@/src/lib/feedback-public";
 import { getFeedbackPlaybackState } from "@/src/lib/feedback-playback";
 import { mediaAssets } from "@/src/lib/schema";
 
@@ -31,11 +31,9 @@ function byteRange(header: string, size: number) {
 }
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const current = await apiSectionUser(request, "feedback");
-  if (!current) return new Response("Unauthorized", { status: 401 });
-
+  const current = await apiSessionUser(request);
   const { id } = await ctx.params;
-  const access = await getFeedbackVideoAccess(id, current.id);
+  const access = await getFeedbackRequestAccess(id, current?.id);
   if (!access?.video.assetId) return new Response("Not found", { status: 404 });
 
   const [asset] = await db.select().from(mediaAssets)
