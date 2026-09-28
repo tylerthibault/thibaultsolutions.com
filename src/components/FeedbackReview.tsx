@@ -520,6 +520,27 @@ export function FeedbackReview({
     setComments((current) => current.filter((comment) => comment.id !== commentId));
   }
 
+  async function hideComment(commentId: string) {
+    const response = await fetch(`/api/feedback/comments/${commentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "hidden" }),
+    });
+    if (!response.ok) return;
+    setComments((current) => current.filter((comment) => comment.id !== commentId));
+  }
+
+  async function blockCommentIp(commentId: string) {
+    if (!window.confirm("Block future public feedback from the network address used for this comment?")) return;
+    const response = await fetch(`/api/feedback/comments/${commentId}/block`, { method: "POST" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      window.alert(result.error ?? "Could not block this feedback source.");
+      return;
+    }
+    window.alert("Future public feedback from this network address is blocked.");
+  }
+
   return <div className={`feedback-review-grid ${mediaOrientation}`}>
     <section className={`feedback-player-panel ${mediaOrientation}`}>
       <div className={mediaOrientation === "portrait" ? "feedback-phone-shell" : "feedback-landscape-shell"}>
@@ -768,6 +789,8 @@ export function FeedbackReview({
                 {comment.resolved
                   ? <button className="tiny-btn" onClick={() => resolve(comment.id, false)}>REOPEN</button>
                   : <button className="tiny-btn resolve-btn" onClick={() => resolve(comment.id, true)}>✓ MARK RESOLVED</button>}
+                <button className="tiny-btn" onClick={() => hideComment(comment.id)}>HIDE</button>
+                <button className="tiny-btn" onClick={() => blockCommentIp(comment.id)}>BLOCK IP</button>
                 <button className="tiny-btn delete-comment-btn" onClick={() => deleteComment(comment.id)}>DELETE</button>
               </div>}
             </div>
