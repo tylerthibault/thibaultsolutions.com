@@ -5,10 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type Comment = {
   id: string;
   videoId: string;
-  authorId: string;
+  authorId: string | null;
   authorName: string;
-  authorEmail: string;
   timestampMs: number | null;
+  timestampEndMs: number | null;
   body: string;
   resolved: boolean;
   createdAt: string | Date;
@@ -28,6 +28,12 @@ type Video = {
 type PlaybackStatus = "checking" | "preparing" | "ready" | "missing" | "error";
 type MediaOrientation = "portrait" | "landscape";
 type NoteView = "open" | "resolved";
+
+type TimelineData = {
+  durationMs: number;
+  waveform: number[];
+  frames: Array<{ index: number; timeMs: number; url: string }>;
+};
 
 type CommentMoment = {
   key: string;
@@ -98,8 +104,8 @@ export function FeedbackReview({
 }: {
   video: Video;
   initialComments: Comment[];
-  currentUser: { id: string; name: string; email: string };
-  role: "owner" | "reviewer";
+  currentUser: { id: string; name: string; email: string } | null;
+  role: "owner" | "reviewer" | "guest";
 }) {
   const player = useRef<HTMLVideoElement | null>(null);
   const socialFrame = useRef<HTMLIFrameElement | null>(null);
@@ -116,9 +122,12 @@ export function FeedbackReview({
     updatedAt: new Date(comment.updatedAt).toISOString(),
   })));
   const [body, setBody] = useState("");
+  const [displayName, setDisplayName] = useState(currentUser?.name ?? "");
+  const [reviewerKey, setReviewerKey] = useState("");
   const [currentMs, setCurrentMs] = useState(0);
   const [capturedMs, setCapturedMs] = useState<number | null>(null);
   const [timelineReady, setTimelineReady] = useState(false);
+  const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
   const [tiktokTimeReady, setTiktokTimeReady] = useState(false);
   const [tiktokDurationMs, setTiktokDurationMs] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -192,6 +201,24 @@ export function FeedbackReview({
   }
 
   useEffect(() => {
+    if (currentUser) return;
+
+    const timer = window.setTimeout(() => {
+      const savedName = window.localStorage.getItem("feedbackDisplayName") ?? "";
+      let savedReviewerKey = window.localStorage.getItem("feedbackReviewerId") ?? "";
+      if (!savedReviewerKey) {
+        savedReviewerKey = window.crypto.randomUUID();
+        window.localStorage.setItem("feedbackReviewerId", savedReviewerKey);
+      }
+
+      setDisplayName(savedName);
+      setReviewerKey(savedReviewerKey);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [currentUser]);
+
+  useEffect(() => {
     if (video.sourceType !== "upload") return;
 
     let cancelled = false;
@@ -255,6 +282,24 @@ export function FeedbackReview({
       }
     };
   }, [video.id, video.sourceType, playbackAttempt]);
+
+  useEffect(() => {
+    if (video.sourceType !== "upload" || playbackStatus !== "ready") return;
+
+    let cancelled = false;
+
+    fetch(`/api/feedback/videos/${video.id}/timeline`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Timeline unavailable");
+        return response.json() as Promise<TimelineData>;
+      })
+      .then((data) => {
+        if (!cancelled) setTimelineData(data);
+      })
+      .catch(() => undefined);
+
+    return () => { cancelled = true; };
+  }, [video.id, video.sourceType, playbackStatus, playbackAttempt]);
 
   useEffect(() => {
     if (video.provider !== "tiktok") return;
@@ -372,7 +417,12 @@ export function FeedbackReview({
     const response = await fetch(`/api/feedback/videos/${video.id}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body, timestampMs }),
+      body: JSON.stringify({
+        body,
+        timestampMs,
+        displayName: role === "guest" ? displayName.trim() || undefined : undefined,
+        reviewerKey: role === "guest" ? reviewerKey || undefined : undefined,
+      }),
     });
     const result = await response.json().catch(() => ({}));
     setBusy(false);
@@ -387,6 +437,11 @@ export function FeedbackReview({
       createdAt: new Date(result.comment.createdAt).toISOString(),
       updatedAt: new Date(result.comment.updatedAt).toISOString(),
     }]);
+    if (role === "guest") {
+      const rememberedName = displayName.trim();
+      if (rememberedName) window.localStorage.setItem("feedbackDisplayName", rememberedName);
+      else window.localStorage.removeItem("feedbackDisplayName");
+    }
     setBody("");
     setCapturedMs(null);
     setGeneralNote(false);
@@ -408,6 +463,28 @@ export function FeedbackReview({
       sendTikTokCommand("seekTo", ms / 1000);
       sendTikTokCommand("play");
     }
+  }
+
+  function scrubTimeline(ms: number) {
+    const next = Math.max(0, Math.min(markerDurationMs ?? ms, ms));
+    setCurrentMs(next);
+
+    if (video.sourceType === "upload" && player.current && playbackStatus === "ready") {
+      player.current.currentTime = next / 1000;
+      return;
+    }
+
+    if (video.provider === "tiktok") {
+      tiktokHeldAtEnd.current = false;
+      sendTikTokCommand("seekTo", next / 1000);
+    }
+  }
+
+  function timelineFrameFor(ms: number | null) {
+    if (!timelineData?.frames.length || ms === null) return thumbnailSrc;
+    return timelineData.frames.reduce((closest, frame) =>
+      Math.abs(frame.timeMs - ms) < Math.abs(closest.timeMs - ms) ? frame : closest
+    ).url;
   }
 
   function scrollMoments(direction: -1 | 1) {
@@ -432,6 +509,27 @@ export function FeedbackReview({
     const response = await fetch(`/api/feedback/comments/${commentId}`, { method: "DELETE" });
     if (!response.ok) return;
     setComments((current) => current.filter((comment) => comment.id !== commentId));
+  }
+
+  async function hideComment(commentId: string) {
+    const response = await fetch(`/api/feedback/comments/${commentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "hidden" }),
+    });
+    if (!response.ok) return;
+    setComments((current) => current.filter((comment) => comment.id !== commentId));
+  }
+
+  async function blockCommentIp(commentId: string) {
+    if (!window.confirm("Block future public feedback from the network address used for this comment?")) return;
+    const response = await fetch(`/api/feedback/comments/${commentId}/block`, { method: "POST" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      window.alert(result.error ?? "Could not block this feedback source.");
+      return;
+    }
+    window.alert("Future public feedback from this network address is blocked.");
   }
 
   return <div className={`feedback-review-grid ${mediaOrientation}`}>
@@ -529,6 +627,19 @@ export function FeedbackReview({
                 This platform does not expose a reliable playback timestamp here, so this feedback will be saved as a general note.
               </p>}
 
+              {role === "guest" && <div className="field feedback-guest-name">
+                <label htmlFor="feedback-display-name">Name or initials <span className="muted">(optional)</span></label>
+                <input
+                  id="feedback-display-name"
+                  className="input"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="e.g. Tyler T."
+                  maxLength={80}
+                  autoComplete="name"
+                />
+              </div>}
+
               <textarea
                 ref={commentInput}
                 className="feedback-textarea"
@@ -537,6 +648,7 @@ export function FeedbackReview({
                 placeholder="What should change here?"
                 maxLength={2000}
               />
+              {role === "guest" && <p className="feedback-privacy-note muted">Basic technical information may be recorded for security and spam prevention.</p>}
               {error && <div className="error">{error}</div>}
               <div className="feedback-composer-actions">
                 <button className="btn" type="button" onClick={() => setComposerOpen(false)}>CANCEL</button>
@@ -548,6 +660,57 @@ export function FeedbackReview({
           </div>}
         </div>
       </div>
+
+      {video.sourceType === "upload" && markerDurationMs && markerDurationMs > 0 && <div className="feedback-editor-timeline">
+        <div className="feedback-editor-timeline-head">
+          <div><span className="micro muted">DETAIL TIMELINE</span><strong>{timeLabel(currentMs)} / {timeLabel(markerDurationMs)}</strong></div>
+          <span className="micro muted">{timelineData ? "SCRUB TO REVIEW" : "BUILDING THUMBNAILS + WAVEFORM…"}</span>
+        </div>
+
+        <div className="feedback-editor-strip" aria-hidden="true">
+          {timelineData?.frames?.length
+            ? timelineData.frames.map((frame) => <img key={frame.index} src={frame.url} alt="" />)
+            : Array.from({ length: 8 }, (_, index) => <span className="feedback-editor-frame-placeholder" key={index} />)}
+        </div>
+
+        <div className="feedback-waveform-shell">
+          <div className="feedback-waveform" aria-hidden="true">
+            {timelineData?.waveform?.length
+              ? timelineData.waveform.map((value, index) => <i key={index} style={{ height: `${Math.max(8, Math.round(value * 100))}%` }} />)
+              : timelineData
+                ? <span className="feedback-waveform-empty">NO AUDIO TRACK</span>
+                : Array.from({ length: 90 }, (_, index) => <i key={index} style={{ height: `${18 + ((index * 17) % 48)}%` }} className="placeholder" />)}
+          </div>
+          <div className="feedback-editor-comment-markers">
+            {moments.filter((moment) => moment.timestampMs !== null).map((moment) => {
+              const timestamp = moment.timestampMs ?? 0;
+              const left = Math.min(100, Math.max(0, (timestamp / markerDurationMs) * 100));
+              return <button
+                key={moment.key}
+                type="button"
+                className={moment.openCount > 0 ? "feedback-editor-comment-marker" : "feedback-editor-comment-marker resolved"}
+                style={{ left: `${left}%` }}
+                title={`${moment.count} comment${moment.count === 1 ? "" : "s"} at ${timeLabel(timestamp)}`}
+                onClick={() => seek(timestamp)}
+              ><span>{moment.count}</span></button>;
+            })}
+          </div>
+          <input
+            className="feedback-editor-scrubber"
+            type="range"
+            min="0"
+            max={markerDurationMs}
+            step="50"
+            value={Math.min(currentMs, markerDurationMs)}
+            onChange={(event) => scrubTimeline(Number(event.currentTarget.value))}
+            aria-label="Scrub feedback timeline"
+          />
+        </div>
+
+        <div className="feedback-editor-ruler" aria-hidden="true">
+          {[0, .25, .5, .75, 1].map((fraction) => <span key={fraction}>{timeLabel(Math.round(markerDurationMs * fraction))}</span>)}
+        </div>
+      </div>}
 
       {moments.length > 0 && <div className="feedback-moments-section">
         <div className="feedback-moments-title">
@@ -566,7 +729,7 @@ export function FeedbackReview({
               title={moment.timestampMs === null ? moment.firstComment.body : `Jump to ${timeLabel(moment.timestampMs)}`}
             >
               <span className="feedback-moment-image">
-                {thumbnailSrc ? <img src={thumbnailSrc} alt="" /> : <span className="feedback-moment-placeholder">CC</span>}
+                {timelineFrameFor(moment.timestampMs) ? <img src={timelineFrameFor(moment.timestampMs) ?? ""} alt="" /> : <span className="feedback-moment-placeholder">CC</span>}
                 <span className="feedback-moment-count">● {moment.count}</span>
                 <span className="feedback-moment-time">{timeLabel(moment.timestampMs)}</span>
               </span>
@@ -619,6 +782,8 @@ export function FeedbackReview({
                 {comment.resolved
                   ? <button className="tiny-btn" onClick={() => resolve(comment.id, false)}>REOPEN</button>
                   : <button className="tiny-btn resolve-btn" onClick={() => resolve(comment.id, true)}>✓ MARK RESOLVED</button>}
+                <button className="tiny-btn" onClick={() => hideComment(comment.id)}>HIDE</button>
+                <button className="tiny-btn" onClick={() => blockCommentIp(comment.id)}>BLOCK IP</button>
                 <button className="tiny-btn delete-comment-btn" onClick={() => deleteComment(comment.id)}>DELETE</button>
               </div>}
             </div>
@@ -626,7 +791,7 @@ export function FeedbackReview({
         </article>)}
       </div>
 
-      <div className="feedback-reviewer-id micro muted">SIGNED IN AS {currentUser.name.toUpperCase()}</div>
+      <div className="feedback-reviewer-id micro muted">{currentUser ? `SIGNED IN AS ${currentUser.name.toUpperCase()}` : "PUBLIC REVIEWER · NO LOGIN REQUIRED"}</div>
     </aside>
   </div>;
 }

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/lib/db";
 import { HOMEPAGE_UGC_SLOTS } from "@/src/lib/homepage-slots";
 import { parseFeedbackLink } from "@/src/lib/feedback-links";
-import { homepageUgcSlots, mediaAssets } from "@/src/lib/schema";
+import { feedbackVideos, homepageUgcSlots, mediaAssets } from "@/src/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +18,11 @@ export async function GET() {
     height: mediaAssets.height,
     durationMs: mediaAssets.durationMs,
     updatedAt: homepageUgcSlots.updatedAt,
+    feedbackVideoId: feedbackVideos.id,
+    feedbackIsPublic: feedbackVideos.isPublic,
   }).from(homepageUgcSlots)
-    .leftJoin(mediaAssets, eq(homepageUgcSlots.assetId, mediaAssets.id));
+    .leftJoin(mediaAssets, eq(homepageUgcSlots.assetId, mediaAssets.id))
+    .leftJoin(feedbackVideos, eq(feedbackVideos.homepageSlot, homepageUgcSlots.slot));
 
   const bySlot = new Map(rows.map((row) => [row.slot, row]));
 
@@ -45,6 +48,8 @@ export async function GET() {
         thumbnailUrl: hasFile
           ? `/api/homepage/slots/${definition.id}/thumbnail`
           : row?.externalThumbnailUrl ?? null,
+        feedbackVideoId: row?.feedbackIsPublic ? row.feedbackVideoId ?? null : null,
+        feedbackUrl: row?.feedbackIsPublic && row.feedbackVideoId ? `/creative-circle/review/video/${row.feedbackVideoId}` : null,
         updatedAt: row?.updatedAt?.toISOString() ?? null,
       };
     }),
