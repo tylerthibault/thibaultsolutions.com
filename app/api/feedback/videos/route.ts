@@ -97,6 +97,7 @@ export async function POST(request: Request) {
     sourceUrl,
     provider,
     thumbnailUrl,
+    isPublic: true,
   }).returning();
 
   const requested = [...new Set(parsed.data.reviewerIds)].filter((id) => id !== current.id);
