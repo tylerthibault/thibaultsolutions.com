@@ -677,7 +677,9 @@ export function FeedbackReview({
           <div className="feedback-waveform" aria-hidden="true">
             {timelineData?.waveform?.length
               ? timelineData.waveform.map((value, index) => <i key={index} style={{ height: `${Math.max(8, Math.round(value * 100))}%` }} />)
-              : Array.from({ length: 90 }, (_, index) => <i key={index} style={{ height: `${18 + ((index * 17) % 48)}%` }} className="placeholder" />)}
+              : timelineData
+                ? <span className="feedback-waveform-empty">NO AUDIO TRACK</span>
+                : Array.from({ length: 90 }, (_, index) => <i key={index} style={{ height: `${18 + ((index * 17) % 48)}%` }} className="placeholder" />)}
           </div>
           <div className="feedback-editor-comment-markers">
             {moments.filter((moment) => moment.timestampMs !== null).map((moment) => {
