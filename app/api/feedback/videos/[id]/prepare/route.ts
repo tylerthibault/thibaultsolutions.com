@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { apiSectionUser } from "@/src/lib/api-auth";
+import { apiSessionUser } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
-import { getFeedbackVideoAccess } from "@/src/lib/feedback-access";
+import { getFeedbackRequestAccess } from "@/src/lib/feedback-public";
 import {
   getFeedbackPlaybackState,
   startFeedbackPlaybackPreparation,
@@ -13,11 +13,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function assetFor(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const current = await apiSectionUser(request, "feedback");
-  if (!current) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-
+  const current = await apiSessionUser(request);
   const { id } = await ctx.params;
-  const access = await getFeedbackVideoAccess(id, current.id);
+  const access = await getFeedbackRequestAccess(id, current?.id);
   if (!access?.video.assetId) {
     return { error: NextResponse.json({ error: "Feedback video not found." }, { status: 404 }) };
   }
