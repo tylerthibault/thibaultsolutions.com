@@ -14,7 +14,7 @@ export type UgcDiscoveryFinding = {
   url: string;
   applyUrl?: string | null;
   location?: string | null;
-  provider: "Greenhouse" | "Lever" | "Careers page";
+  provider: "Greenhouse" | "Lever" | "Ashby" | "Careers page";
   score: number;
   publishedAt?: Date | null;
   compensation?: string | null;
