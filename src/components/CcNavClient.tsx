@@ -46,21 +46,25 @@ export function CcNavClient({
     {
       href: "/creative-circle",
       label: "Home",
+      shortLabel: "Home",
       active: (value) => value === "/creative-circle",
     },
     ...(labAccess ? [{
       href: "/creative-circle/lab",
       label: "Video Lab",
+      shortLabel: "Video",
       active: (value: string) => value.startsWith("/creative-circle/lab") || value.startsWith("/creative-circle/project"),
     }] : []),
     ...((feedbackAccess || publicGuest) ? [{
       href: "/creative-circle/review",
       label: "Feedback Lab",
+      shortLabel: "Feedback",
       active: (value: string) => value.startsWith("/creative-circle/review"),
     }] : []),
     ...(admin ? [{
       href: "/creative-circle/admin/ugc-brands",
       label: "UGC Radar",
+      shortLabel: "Radar",
       active: (value: string) => value.startsWith("/creative-circle/admin/ugc-brands"),
     }] : []),
   ];
