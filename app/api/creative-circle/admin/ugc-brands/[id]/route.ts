@@ -38,6 +38,9 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   if (!parsed.success) return NextResponse.json({ error: "Invalid update", details: parsed.error.flatten() }, { status: 400 });
   await ensureUgcBrandCrm();
   const data = parsed.data;
+  const researchTouched = ["signal", "source", "sourceUrl", "compensation", "creatorFit", "researchNotes"]
+    .some((key) => key in data);
+  const closingLead = data.status === "WON" || data.status === "PASS";
   const values = {
     ...data,
     ...(data.sourceUrl !== undefined ? { sourceUrl: data.sourceUrl || null } : {}),
@@ -46,6 +49,8 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     ...(data.contactUrl !== undefined ? { contactUrl: data.contactUrl || null } : {}),
     ...(data.lastContactedAt !== undefined ? { lastContactedAt: data.lastContactedAt ? new Date(data.lastContactedAt) : null } : {}),
     ...(data.nextFollowUpAt !== undefined ? { nextFollowUpAt: data.nextFollowUpAt ? new Date(data.nextFollowUpAt) : null } : {}),
+    ...(closingLead && data.nextFollowUpAt === undefined ? { nextFollowUpAt: null } : {}),
+    ...(researchTouched ? { researchedAt: new Date() } : {}),
     updatedAt: new Date(),
   };
   const [lead] = await db.update(ugcBrandLeads).set(values).where(eq(ugcBrandLeads.id, id)).returning();
