@@ -153,7 +153,7 @@ export function UgcDiscoveryPanel({ initialTargets }: { initialTargets: UgcDisco
         <span className="micro" style={{ color: "var(--lime)" }}>FREE LEAD DISCOVERY</span>
         <h2 style={{ margin: "7px 0 6px", fontSize: 30 }}>TARGET COMPANIES</h2>
         <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>
-          Add a company website, careers page, Greenhouse board, or Lever board. Refresh checks public sources for UGC, creator, social-content, TikTok, and related openings without a paid search API.
+          Add a company website, careers page, Greenhouse, Lever, or Ashby board. Refresh checks public sources for UGC, creator, social-content, TikTok, and related openings without a paid search API.
         </p>
       </div>
       <button className="btn" onClick={() => void refresh()} disabled={refreshing || !targets.some((target) => target.enabled)}>
@@ -198,7 +198,7 @@ export function UgcDiscoveryPanel({ initialTargets }: { initialTargets: UgcDisco
     <div style={{ display: "grid", gap: 9 }}>
       {targets.length === 0 && <div style={{ border: "1px dashed #343f49", padding: 16 }}>
         <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>
-          No companies are being watched yet. Start with a brand website or careers page. The refresher can follow a careers link one level deep, and Greenhouse or Lever boards are detected automatically.
+          No companies are being watched yet. Start with a brand website or careers page. The refresher can follow a careers link one level deep, and Greenhouse, Lever, and Ashby boards are detected automatically.
         </p>
       </div>}
 
