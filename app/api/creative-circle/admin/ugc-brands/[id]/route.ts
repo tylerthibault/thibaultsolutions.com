@@ -4,7 +4,7 @@ import { z } from "zod";
 import { apiSessionUser } from "@/src/lib/api-auth";
 import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { ensureUgcBrandCrm, ugcBrandLeads } from "@/src/lib/ugc-brand-crm";
+import { ugcBrandLeads } from "@/src/lib/ugc-brand-crm";
 
 const statuses = ["NEW", "RESEARCH", "PITCH", "APPLIED", "FOLLOW_UP", "WON", "PASS"] as const;
 const patchSchema = z.object({
@@ -36,7 +36,6 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   const parsed = patchSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid update", details: parsed.error.flatten() }, { status: 400 });
-  await ensureUgcBrandCrm();
   const data = parsed.data;
   const researchTouched = ["signal", "source", "sourceUrl", "compensation", "creatorFit", "researchNotes"]
     .some((key) => key in data);
@@ -62,7 +61,6 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
   if (!(await requireAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
-  await ensureUgcBrandCrm();
   const [deleted] = await db.delete(ugcBrandLeads).where(eq(ugcBrandLeads.id, id)).returning({ id: ugcBrandLeads.id });
   if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
