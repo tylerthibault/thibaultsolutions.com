@@ -1,8 +1,7 @@
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiSessionUser } from "@/src/lib/api-auth";
-import { isCreativeCircleAdmin } from "@/src/lib/auth";
+import { apiCreativeCircleAdmin } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
 import { listUgcBrandLeads, ugcBrandLeads } from "@/src/lib/ugc-brand-crm";
 import { UGC_BRAND_STATUSES } from "@/src/lib/ugc-brand-types";
@@ -25,19 +24,14 @@ const createSchema = z.object({
   nextFollowUpAt: z.string().datetime().nullable().optional(),
 });
 
-async function requireAdmin(request: Request) {
-  const user = await apiSessionUser(request);
-  return user && isCreativeCircleAdmin(user.email) ? user : null;
-}
-
 export async function GET(request: Request) {
-  if (!(await requireAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await apiCreativeCircleAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const leads = await listUgcBrandLeads();
   return NextResponse.json({ leads });
 }
 
 export async function POST(request: Request) {
-  if (!(await requireAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await apiCreativeCircleAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid lead", details: parsed.error.flatten() }, { status: 400 });
   const data = parsed.data;
