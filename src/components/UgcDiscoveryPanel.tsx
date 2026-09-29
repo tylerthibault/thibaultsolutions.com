@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type UgcDiscoveryTargetView = {
@@ -55,7 +55,6 @@ export function UgcDiscoveryPanel({ initialTargets }: { initialTargets: UgcDisco
   const [error, setError] = useState("");
   const [summary, setSummary] = useState<RefreshSummary | null>(null);
 
-  useEffect(() => setTargets(initialTargets), [initialTargets]);
 
   async function reloadTargets() {
     const response = await fetch("/api/creative-circle/admin/ugc-targets", { cache: "no-store" });
