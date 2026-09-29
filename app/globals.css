@@ -905,10 +905,6 @@
   .cc-primary-link{min-height:36px;padding:0 9px;font-size:8px}
   .cc-primary-label{display:none}
   .cc-primary-short{display:inline}
-  .cc-primary-link:nth-child(1)::after{content:"Home"}
-  .cc-primary-link:nth-child(2)::after{content:"Video"}
-  .cc-primary-link:nth-child(3)::after{content:"Feedback"}
-  .cc-primary-link:nth-child(4)::after{content:"Radar"}
   .cc-topbar-actions .cc-nav-menu:first-child{display:none}
   .cc-avatar{width:28px;height:28px;border-radius:8px}
   .cc-dashboard{width:calc(100% - 24px);padding-bottom:52px}
