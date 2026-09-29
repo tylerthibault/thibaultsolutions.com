@@ -170,7 +170,7 @@ export function UgcDiscoveryPanel({ initialTargets }: { initialTargets: UgcDisco
         <span className="micro">CATEGORY</span>
         <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Tech / SaaS" style={fieldStyle} />
       </label>
-      <label style={{ display: "grid", gap: 5, gridColumn: "span 2" }}>
+      <label style={{ display: "grid", gap: 5, gridColumn: "1 / -1" }}>
         <span className="micro">CAREERS / JOB BOARD URL</span>
         <input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://company.com/careers" style={fieldStyle} />
       </label>
@@ -204,7 +204,7 @@ export function UgcDiscoveryPanel({ initialTargets }: { initialTargets: UgcDisco
 
       {targets.map((target) => <div key={target.id} style={{
         display: "grid",
-        gridTemplateColumns: "minmax(150px,1.2fr) minmax(120px,.7fr) minmax(170px,1fr) auto",
+        gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
         gap: 10,
         alignItems: "center",
         borderTop: "1px solid #282f36",
@@ -224,7 +224,7 @@ export function UgcDiscoveryPanel({ initialTargets }: { initialTargets: UgcDisco
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{dateLabel(target.lastCheckedAt)}</div>
           {target.lastError && <div style={{ color: "#ff8d8d", fontSize: 11, marginTop: 3 }}>{target.lastError}</div>}
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-start" }}>
           <button className="btn" onClick={() => void refresh([target.id])} disabled={refreshing || !target.enabled}>CHECK</button>
           <button className="btn" onClick={() => void patchTarget(target.id, { enabled: !target.enabled })}>{target.enabled ? "PAUSE" : "ENABLE"}</button>
           <a className="btn" href={target.sourceUrl} target="_blank" rel="noreferrer">OPEN ↗</a>
