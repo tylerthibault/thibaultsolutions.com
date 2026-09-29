@@ -233,7 +233,28 @@
       .hero-visual{min-height:530px}
       .hero-phone{width:225px}
       .hero-sticker{left:0}.hero-sticker.alt{right:0}
-      .portfolio-row{display:flex;gap:16px;margin-left:-2px;margin-right:-2px}.portfolio-item{flex:0 0 160px}
+      .portfolio-row{
+        display:flex;
+        grid-template-columns:none;
+        gap:16px;
+        margin-left:-14px;
+        margin-right:-14px;
+        padding:0 14px 14px;
+        overflow-x:auto;
+        overflow-y:hidden;
+        scroll-snap-type:x mandatory;
+        scroll-padding-inline:14px;
+        overscroll-behavior-inline:contain;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:none;
+        touch-action:pan-x pan-y;
+      }
+      .portfolio-row::-webkit-scrollbar{display:none}
+      .portfolio-item{
+        flex:0 0 min(78vw,300px);
+        scroll-snap-align:start;
+        scroll-snap-stop:normal;
+      }
       .campaign-phones{display:flex;overflow-x:auto;gap:14px;padding-bottom:10px}.campaign-card{flex:0 0 175px}
       .campaign-copy h2{font-size:44px}
       .process-line{grid-template-columns:1fr}
