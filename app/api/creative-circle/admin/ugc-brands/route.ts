@@ -5,8 +5,8 @@ import { apiSessionUser } from "@/src/lib/api-auth";
 import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { listUgcBrandLeads, ugcBrandLeads } from "@/src/lib/ugc-brand-crm";
+import { UGC_BRAND_STATUSES } from "@/src/lib/ugc-brand-types";
 
-const statuses = ["NEW", "RESEARCH", "PITCH", "APPLIED", "FOLLOW_UP", "WON", "PASS"] as const;
 const createSchema = z.object({
   brand: z.string().trim().min(1).max(160),
   category: z.string().trim().max(120).default("General"),
@@ -15,7 +15,7 @@ const createSchema = z.object({
   sourceUrl: z.string().trim().url().or(z.literal("")).optional(),
   compensation: z.string().trim().max(160).default("Not listed"),
   creatorFit: z.string().trim().max(600).default(""),
-  status: z.enum(statuses).default("RESEARCH"),
+  status: z.enum(UGC_BRAND_STATUSES).default("RESEARCH"),
   contactName: z.string().trim().max(160).optional(),
   contactEmail: z.string().trim().email().or(z.literal("")).optional(),
   contactUrl: z.string().trim().url().or(z.literal("")).optional(),
