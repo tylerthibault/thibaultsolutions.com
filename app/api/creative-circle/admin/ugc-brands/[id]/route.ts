@@ -1,8 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiSessionUser } from "@/src/lib/api-auth";
-import { isCreativeCircleAdmin } from "@/src/lib/auth";
+import { apiCreativeCircleAdmin } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
 import { ugcBrandLeads } from "@/src/lib/ugc-brand-crm";
 import { UGC_BRAND_STATUSES } from "@/src/lib/ugc-brand-types";
@@ -25,13 +24,8 @@ const patchSchema = z.object({
   nextFollowUpAt: z.string().datetime().nullable().optional(),
 });
 
-async function requireAdmin(request: Request) {
-  const user = await apiSessionUser(request);
-  return user && isCreativeCircleAdmin(user.email) ? user : null;
-}
-
 export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await apiCreativeCircleAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   const parsed = patchSchema.safeParse(await request.json().catch(() => null));
@@ -68,7 +62,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
 }
 
 export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await apiCreativeCircleAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   const [deleted] = await db.delete(ugcBrandLeads).where(eq(ugcBrandLeads.id, id)).returning({ id: ugcBrandLeads.id });
