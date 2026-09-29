@@ -343,7 +343,7 @@ async function fetchGeneric(raw: string, keywords: string[], depth = 0): Promise
       publishedAt: null,
     }))
     .filter((finding) => {
-      if (finding.score <= 0 || seen.has(finding.url)) return false;
+      if (finding.score < 3 || seen.has(finding.url)) return false;
       seen.add(finding.url);
       return true;
     })
