@@ -74,3 +74,26 @@ docker build -t creative-circle .
 Health check: `GET /api/health` verifies PostgreSQL access and the persistent media directories without exposing owner data.
 
 Do not commit real secrets or owner credentials.
+
+
+## UGC lead discovery
+
+The private UGC Radar at `/creative-circle/admin/ugc-brands` can watch public company recruiting sources without a paid search API.
+
+Supported discovery paths:
+
+- Greenhouse public job boards
+- Lever public job boards, including EU boards
+- Standard HTTPS careers pages, including pages that link through to Greenhouse or Lever
+
+Add a company name and its careers/job-board URL in the admin UI, then use **Refresh all leads** or check one company at a time. Matching creator/UGC/social-content openings update or create CRM leads and record the last verified time.
+
+For optional scheduled refreshes, set a strong `UGC_DISCOVERY_CRON_TOKEN` and have Coolify call:
+
+```bash
+curl -fsS -X POST \
+  -H "Authorization: Bearer $UGC_DISCOVERY_CRON_TOKEN" \
+  https://thibaultsolutions.com/api/creative-circle/admin/ugc-targets/cron
+```
+
+The cron endpoint is disabled unless the token is configured. Discovery requests only accept public HTTPS sources and reject local/private network destinations.
