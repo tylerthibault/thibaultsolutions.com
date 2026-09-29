@@ -4,7 +4,7 @@ import { z } from "zod";
 import { apiSessionUser } from "@/src/lib/api-auth";
 import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { ensureUgcBrandCrm, listUgcBrandLeads, ugcBrandLeads } from "@/src/lib/ugc-brand-crm";
+import { listUgcBrandLeads, ugcBrandLeads } from "@/src/lib/ugc-brand-crm";
 
 const statuses = ["NEW", "RESEARCH", "PITCH", "APPLIED", "FOLLOW_UP", "WON", "PASS"] as const;
 const createSchema = z.object({
@@ -40,7 +40,6 @@ export async function POST(request: Request) {
   if (!(await requireAdmin(request))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid lead", details: parsed.error.flatten() }, { status: 400 });
-  await ensureUgcBrandCrm();
   const data = parsed.data;
   const [duplicate] = await db.select({ id: ugcBrandLeads.id }).from(ugcBrandLeads)
     .where(ilike(ugcBrandLeads.brand, data.brand)).limit(1);
