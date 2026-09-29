@@ -143,7 +143,7 @@ export function detectUgcDiscoverySourceType(raw: string): UgcDiscoverySourceTyp
     const url = new URL(raw);
     const host = url.hostname.toLowerCase();
     if (host.includes("greenhouse.io")) return "GREENHOUSE";
-    if (host === "jobs.lever.co" || host === "api.lever.co") return "LEVER";
+    if (host === "jobs.lever.co" || host === "api.lever.co" || host === "jobs.eu.lever.co" || host === "api.eu.lever.co") return "LEVER";
   } catch {
     return "GENERIC";
   }
@@ -161,7 +161,7 @@ function greenhouseToken(raw: string) {
 
 function leverSite(raw: string) {
   const url = new URL(raw);
-  if (url.hostname === "api.lever.co") {
+  if (url.hostname === "api.lever.co" || url.hostname === "api.eu.lever.co") {
     const match = url.pathname.match(/\/v0\/postings\/([^/]+)/);
     if (match) return match[1];
   }
@@ -205,7 +205,9 @@ async function fetchGreenhouse(raw: string, keywords: string[]): Promise<UgcDisc
 async function fetchLever(raw: string, keywords: string[]): Promise<UgcDiscoveryFinding[]> {
   const site = leverSite(raw);
   if (!site) throw new Error("Could not determine Lever site name");
-  const endpoint = `https://api.lever.co/v0/postings/${encodeURIComponent(site)}?mode=json`;
+  const sourceHost = new URL(raw).hostname.toLowerCase();
+  const apiHost = sourceHost.endsWith(".eu.lever.co") ? "api.eu.lever.co" : "api.lever.co";
+  const endpoint = `https://${apiHost}/v0/postings/${encodeURIComponent(site)}?mode=json`;
   const { text } = await safeFetchText(endpoint);
   const payload = JSON.parse(text) as Array<{
     text?: string;
