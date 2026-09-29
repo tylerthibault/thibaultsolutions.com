@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { auth, getCreativeCirclePermissions, type CreativeCircleSection } from "./auth";
+import { auth, getCreativeCirclePermissions, isCreativeCircleAdmin, type CreativeCircleSection } from "./auth";
 import { db } from "./db";
 import { user as users } from "./schema";
 
@@ -28,5 +28,12 @@ export async function apiSectionUser(request: Request, section: CreativeCircleSe
   const permissions = await getCreativeCirclePermissions(sessionUser.id, sessionUser.email);
   const allowed = section === "lab" ? permissions.labAccess : permissions.feedbackAccess;
   if (!allowed) return null;
+  return (await hydratedUser(sessionUser.id)) ?? sessionUser;
+}
+
+
+export async function apiCreativeCircleAdmin(request: Request) {
+  const sessionUser = await apiSessionUser(request);
+  if (!sessionUser || !isCreativeCircleAdmin(sessionUser.email)) return null;
   return (await hydratedUser(sessionUser.id)) ?? sessionUser;
 }
