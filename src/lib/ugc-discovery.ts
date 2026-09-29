@@ -260,7 +260,7 @@ function extractAnchors(html: string, baseUrl: URL) {
   return anchors;
 }
 
-async function fetchGeneric(raw: string, keywords: string[]): Promise<UgcDiscoveryFinding[]> {
+async function fetchGeneric(raw: string, keywords: string[], depth = 0): Promise<UgcDiscoveryFinding[]> {
   const { url, text, contentType } = await safeFetchText(raw);
   if (!contentType.includes("html") && !/^\s*</.test(text)) {
     throw new Error("Generic discovery source did not return HTML");
@@ -275,7 +275,7 @@ async function fetchGeneric(raw: string, keywords: string[]): Promise<UgcDiscove
   }
 
   const seen = new Set<string>();
-  return anchors
+  const findings = anchors
     .map((anchor) => ({
       title: anchor.text || "Career opportunity",
       url: anchor.url,
@@ -292,6 +292,18 @@ async function fetchGeneric(raw: string, keywords: string[]): Promise<UgcDiscove
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 25);
+
+  if (findings.length || depth >= 1) return findings;
+
+  const careersLink = anchors.find((anchor) => {
+    const hint = `${anchor.text} ${anchor.url}`.toLowerCase();
+    return /\b(careers?|jobs?|join[- _]?us|work[- _]?with[- _]?us|open[- _]?positions?)\b/.test(hint);
+  });
+  if (careersLink && careersLink.url !== url.toString()) {
+    return fetchGeneric(careersLink.url, keywords, depth + 1);
+  }
+
+  return findings;
 }
 
 async function findingsForTarget(target: UgcDiscoveryTarget) {
