@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectUgcDiscoverySourceType } from "@/src/lib/ugc-discovery";
+import { detectUgcDiscoverySourceType } from "../src/lib/ugc-discovery";
 
 describe("UGC discovery source detection", () => {
   it("detects Greenhouse boards", () => {
