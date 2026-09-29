@@ -1,4 +1,4 @@
-import { ilike } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiSessionUser } from "@/src/lib/api-auth";
@@ -42,17 +42,27 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid lead", details: parsed.error.flatten() }, { status: 400 });
   const data = parsed.data;
   const [duplicate] = await db.select({ id: ugcBrandLeads.id }).from(ugcBrandLeads)
-    .where(ilike(ugcBrandLeads.brand, data.brand)).limit(1);
+    .where(sql`lower(${ugcBrandLeads.brand}) = lower(${data.brand})`).limit(1);
   if (duplicate) return NextResponse.json({ error: "That brand is already in the radar" }, { status: 409 });
 
+  const {
+    sourceUrl,
+    contactName,
+    contactEmail,
+    contactUrl,
+    lastContactedAt,
+    nextFollowUpAt,
+    ...rest
+  } = data;
+
   const [lead] = await db.insert(ugcBrandLeads).values({
-    ...data,
-    sourceUrl: data.sourceUrl || null,
-    contactName: data.contactName || null,
-    contactEmail: data.contactEmail || null,
-    contactUrl: data.contactUrl || null,
-    lastContactedAt: data.lastContactedAt ? new Date(data.lastContactedAt) : null,
-    nextFollowUpAt: data.nextFollowUpAt ? new Date(data.nextFollowUpAt) : null,
+    ...rest,
+    sourceUrl: sourceUrl || null,
+    contactName: contactName || null,
+    contactEmail: contactEmail || null,
+    contactUrl: contactUrl || null,
+    lastContactedAt: lastContactedAt ? new Date(lastContactedAt) : null,
+    nextFollowUpAt: nextFollowUpAt ? new Date(nextFollowUpAt) : null,
     researchedAt: new Date(),
     updatedAt: new Date(),
   }).returning();
