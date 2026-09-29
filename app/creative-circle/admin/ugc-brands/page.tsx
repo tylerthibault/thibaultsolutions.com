@@ -3,12 +3,14 @@ import { requireCreativeCircleAdmin } from "@/src/lib/auth";
 import { listUgcBrandLeads } from "@/src/lib/ugc-brand-crm";
 import { CcNav } from "@/src/components/CcNav";
 import { UgcBrandCrm, type UgcBrandLead } from "@/src/components/UgcBrandCrm";
+import { isUgcBrandStatus } from "@/src/lib/ugc-brand-types";
 
 export default async function UgcBrandRadarPage() {
   const admin = await requireCreativeCircleAdmin();
   const leads = await listUgcBrandLeads();
   const serialized: UgcBrandLead[] = leads.map((lead) => ({
     ...lead,
+    status: isUgcBrandStatus(lead.status) ? lead.status : "RESEARCH",
     lastContactedAt: lead.lastContactedAt?.toISOString() ?? null,
     nextFollowUpAt: lead.nextFollowUpAt?.toISOString() ?? null,
     researchedAt: lead.researchedAt.toISOString(),
