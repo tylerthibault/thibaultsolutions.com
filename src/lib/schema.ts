@@ -233,6 +233,24 @@ export const blockedFeedbackIps = pgTable("blocked_feedback_ips", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const ugcDiscoveryTargets = pgTable("ugc_discovery_targets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  category: text("category").notNull().default("General"),
+  sourceUrl: text("source_url").notNull(),
+  sourceType: text("source_type").notNull().default("AUTO"),
+  keywords: text("keywords").notNull().default(""),
+  enabled: boolean("enabled").notNull().default(true),
+  lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+  lastStatus: text("last_status"),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("ugc_discovery_target_source_unique").on(t.sourceUrl),
+  index("ugc_discovery_target_enabled_idx").on(t.enabled, t.updatedAt),
+]);
+
 export const ugcBrandLeads = pgTable("ugc_brand_leads", {
   id: uuid("id").defaultRandom().primaryKey(),
   brand: text("brand").notNull(),
@@ -248,6 +266,9 @@ export const ugcBrandLeads = pgTable("ugc_brand_leads", {
   contactUrl: text("contact_url"),
   pitchNotes: text("pitch_notes").notNull().default(""),
   researchNotes: text("research_notes").notNull().default(""),
+  discoveryTargetId: uuid("discovery_target_id").references(() => ugcDiscoveryTargets.id, { onDelete: "set null" }),
+  discoveredAt: timestamp("discovered_at", { withTimezone: true }),
+  lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
   lastContactedAt: timestamp("last_contacted_at", { withTimezone: true }),
   nextFollowUpAt: timestamp("next_follow_up_at", { withTimezone: true }),
   researchedAt: timestamp("researched_at", { withTimezone: true }).notNull().defaultNow(),
@@ -256,6 +277,8 @@ export const ugcBrandLeads = pgTable("ugc_brand_leads", {
 }, (t) => [
   index("ugc_brand_status_idx").on(t.status, t.updatedAt),
   index("ugc_brand_follow_up_idx").on(t.nextFollowUpAt),
+  index("ugc_brand_discovery_target_idx").on(t.discoveryTargetId),
+  index("ugc_brand_verified_idx").on(t.lastVerifiedAt),
 ]);
 
-export const schema = { user, session, account, verification, mediaAssets, homepageUgcSlots, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, creativeCircleInvitations, feedbackVideos, feedbackAssignments, feedbackViews, feedbackComments, blockedFeedbackIps, ugcBrandLeads };
+export const schema = { user, session, account, verification, mediaAssets, homepageUgcSlots, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, creativeCircleInvitations, feedbackVideos, feedbackAssignments, feedbackViews, feedbackComments, blockedFeedbackIps, ugcDiscoveryTargets, ugcBrandLeads };
