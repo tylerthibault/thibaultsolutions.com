@@ -12,6 +12,10 @@ describe("UGC discovery source detection", () => {
     expect(detectUgcDiscoverySourceType("https://jobs.eu.lever.co/example")).toBe("LEVER");
   });
 
+  it("detects Ashby boards", () => {
+    expect(detectUgcDiscoverySourceType("https://jobs.ashbyhq.com/example")).toBe("ASHBY");
+  });
+
   it("falls back to generic careers pages", () => {
     expect(detectUgcDiscoverySourceType("https://example.com/careers")).toBe("GENERIC");
   });
