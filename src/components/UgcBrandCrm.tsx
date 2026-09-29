@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { UGC_BRAND_UGC_BRAND_STATUSES, type UgcBrandStatus } from "@/src/lib/ugc-brand-types";
+import { UGC_BRAND_STATUSES, type UgcBrandStatus } from "@/src/lib/ugc-brand-types";
 
 export type UgcBrandLead = {
   id: string;
