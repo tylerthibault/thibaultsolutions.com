@@ -84,7 +84,8 @@ Supported discovery paths:
 
 - Greenhouse public job boards
 - Lever public job boards, including EU boards
-- Standard HTTPS careers pages, including pages that link through to Greenhouse or Lever
+- Ashby public job boards
+- Standard HTTPS careers pages, including pages that link through to Greenhouse, Lever, or Ashby
 
 Add a company name and its careers/job-board URL in the admin UI, then use **Refresh all leads** or check one company at a time. Matching creator/UGC/social-content openings update or create CRM leads and record the last verified time.
 
