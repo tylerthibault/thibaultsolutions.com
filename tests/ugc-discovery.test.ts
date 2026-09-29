@@ -9,6 +9,7 @@ describe("UGC discovery source detection", () => {
 
   it("detects Lever boards", () => {
     expect(detectUgcDiscoverySourceType("https://jobs.lever.co/example")).toBe("LEVER");
+    expect(detectUgcDiscoverySourceType("https://jobs.eu.lever.co/example")).toBe("LEVER");
   });
 
   it("falls back to generic careers pages", () => {
