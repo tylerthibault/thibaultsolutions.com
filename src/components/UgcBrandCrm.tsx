@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { UGC_BRAND_STATUSES, type UgcBrandStatus } from "@/src/lib/ugc-brand-types";
 
 export type UgcBrandLead = {
@@ -147,7 +147,6 @@ function LeadCard({
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => setDraft(lead), [lead]);
 
   async function save(patch?: Partial<UgcBrandLead>) {
     setSaving(true);
@@ -317,7 +316,6 @@ export function UgcBrandCrm({ initialLeads }: { initialLeads: UgcBrandLead[] }) 
   const [category, setCategory] = useState("General");
   const [error, setError] = useState("");
 
-  useEffect(() => setLeads(initialLeads), [initialLeads]);
 
   const due = leads.filter(followUpDue).length;
   const stale = leads.filter(researchStale).length;
