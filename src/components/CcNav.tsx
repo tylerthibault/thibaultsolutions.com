@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/lib/db";
 import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { user as users } from "@/src/lib/schema";
+import { CcNavClient } from "@/src/components/CcNavClient";
 
 export async function CcNav({ userEmail }: { userEmail?: string }) {
   const admin = isCreativeCircleAdmin(userEmail);
@@ -17,20 +17,17 @@ export async function CcNav({ userEmail }: { userEmail?: string }) {
       labAccess: users.creativeCircleLabAccess,
       feedbackAccess: users.creativeCircleFeedbackAccess,
     }).from(users).where(eq(users.email, userEmail)).limit(1);
+
     labAccess = row?.labAccess === true;
     feedbackAccess = row?.feedbackAccess === true;
     if (row?.username) identityLabel = `@${row.username}`;
   }
 
-  return <header className="cc-nav">
-    <Link className="cc-brand" href={publicGuest ? "/creative-circle/review" : "/creative-circle"}><b>CC</b><span className="cc-brand-copy"><strong>CREATIVE CIRCLE</strong>{identityLabel ? <small>{identityLabel}</small> : <small>OPEN REVIEW</small>}</span></Link>
-    <div style={{display:"flex",alignItems:"center",gap:8}}>
-      {labAccess&&<Link className="btn" href="/creative-circle/lab">VIDEO LAB</Link>}
-      {(feedbackAccess || publicGuest)&&<Link className="btn" href="/creative-circle/review">FEEDBACK LAB</Link>}
-      {admin&&<Link className="btn" href="/creative-circle/admin/ugc-brands">UGC RADAR</Link>}
-      {admin&&<Link className="btn" href="/creative-circle/admin">SITE ADMIN</Link>}
-      {admin&&<Link className="btn" href="/creative-circle/admin/access">ACCESS</Link>}
-      <Link className="btn" href="/">THIBAULT SOLUTIONS ↗</Link>
-    </div>
-  </header>;
+  return <CcNavClient
+    admin={admin}
+    publicGuest={publicGuest}
+    labAccess={labAccess}
+    feedbackAccess={feedbackAccess}
+    identityLabel={identityLabel}
+  />;
 }
