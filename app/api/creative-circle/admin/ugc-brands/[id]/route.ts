@@ -40,15 +40,25 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const researchTouched = ["signal", "source", "sourceUrl", "compensation", "creatorFit", "researchNotes"]
     .some((key) => key in data);
   const closingLead = data.status === "WON" || data.status === "PASS";
+  const {
+    sourceUrl,
+    contactName,
+    contactEmail,
+    contactUrl,
+    lastContactedAt,
+    nextFollowUpAt,
+    ...rest
+  } = data;
+
   const values = {
-    ...data,
-    ...(data.sourceUrl !== undefined ? { sourceUrl: data.sourceUrl || null } : {}),
-    ...(data.contactName !== undefined ? { contactName: data.contactName || null } : {}),
-    ...(data.contactEmail !== undefined ? { contactEmail: data.contactEmail || null } : {}),
-    ...(data.contactUrl !== undefined ? { contactUrl: data.contactUrl || null } : {}),
-    ...(data.lastContactedAt !== undefined ? { lastContactedAt: data.lastContactedAt ? new Date(data.lastContactedAt) : null } : {}),
-    ...(data.nextFollowUpAt !== undefined ? { nextFollowUpAt: data.nextFollowUpAt ? new Date(data.nextFollowUpAt) : null } : {}),
-    ...(closingLead && data.nextFollowUpAt === undefined ? { nextFollowUpAt: null } : {}),
+    ...rest,
+    ...(sourceUrl !== undefined ? { sourceUrl: sourceUrl || null } : {}),
+    ...(contactName !== undefined ? { contactName: contactName || null } : {}),
+    ...(contactEmail !== undefined ? { contactEmail: contactEmail || null } : {}),
+    ...(contactUrl !== undefined ? { contactUrl: contactUrl || null } : {}),
+    ...(lastContactedAt !== undefined ? { lastContactedAt: lastContactedAt ? new Date(lastContactedAt) : null } : {}),
+    ...(nextFollowUpAt !== undefined ? { nextFollowUpAt: nextFollowUpAt ? new Date(nextFollowUpAt) : null } : {}),
+    ...(closingLead && nextFollowUpAt === undefined ? { nextFollowUpAt: null } : {}),
     ...(researchTouched ? { researchedAt: new Date() } : {}),
     updatedAt: new Date(),
   };
