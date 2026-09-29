@@ -38,8 +38,14 @@ export default async function UgcBrandRadarPage() {
       </p>
 
       <div style={{ margin: "26px 0 18px", display: "grid", gap: 18 }}>
-        <UgcDiscoveryPanel initialTargets={serializedTargets} />
-        <UgcBrandCrm initialLeads={serialized} />
+        <UgcDiscoveryPanel
+          key={serializedTargets.map((target) => `${target.id}:${target.updatedAt}`).join("|")}
+          initialTargets={serializedTargets}
+        />
+        <UgcBrandCrm
+          key={serialized.map((lead) => `${lead.id}:${lead.updatedAt}`).join("|")}
+          initialLeads={serialized}
+        />
       </div>
 
       <div className="cc-panel" style={{ padding: 18, marginTop: 20 }}>
