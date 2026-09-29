@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { UGC_BRAND_STATUSES, type UgcBrandStatus } from "@/src/lib/ugc-brand-types";
 
 export type UgcBrandLead = {
@@ -18,6 +18,9 @@ export type UgcBrandLead = {
   contactUrl: string | null;
   pitchNotes: string;
   researchNotes: string;
+  discoveryTargetId: string | null;
+  discoveredAt: string | null;
+  lastVerifiedAt: string | null;
   lastContactedAt: string | null;
   nextFollowUpAt: string | null;
   researchedAt: string;
@@ -44,7 +47,8 @@ function followUpDue(lead: UgcBrandLead) {
 }
 
 function researchStale(lead: UgcBrandLead) {
-  const age = Date.now() - new Date(lead.researchedAt).getTime();
+  const freshness = lead.lastVerifiedAt || lead.researchedAt;
+  const age = Date.now() - new Date(freshness).getTime();
   return age > 14 * 24 * 60 * 60 * 1000 && !isClosed(lead.status);
 }
 
@@ -94,6 +98,8 @@ function downloadCsv(leads: UgcBrandLead[]) {
     ["Contact URL", "contactUrl"],
     ["Pitch", "pitchNotes"],
     ["Research Notes", "researchNotes"],
+    ["Discovered", "discoveredAt"],
+    ["Last Verified", "lastVerifiedAt"],
     ["Last Contacted", "lastContactedAt"],
     ["Next Follow-Up", "nextFollowUpAt"],
     ["Researched", "researchedAt"],
@@ -140,6 +146,8 @@ function LeadCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => setDraft(lead), [lead]);
 
   async function save(patch?: Partial<UgcBrandLead>) {
     setSaving(true);
@@ -221,8 +229,9 @@ function LeadCard({
       <div style={{ flex: "1 1 320px", minWidth: 0 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <span className="micro">{draft.category || "GENERAL"}</span>
+          {draft.discoveryTargetId && <span className="micro" style={{ color: "var(--lime)" }}>AUTO DISCOVERY</span>}
           {due && <span className="micro" style={{ color: "#ffd166" }}>FOLLOW-UP DUE</span>}
-          {stale && <span className="micro" style={{ color: "#8fd3ff" }}>RESEARCH 14D+</span>}
+          {stale && <span className="micro" style={{ color: "#8fd3ff" }}>{draft.discoveryTargetId ? "VERIFY 14D+" : "RESEARCH 14D+"}</span>}
         </div>
         <h2 style={{ margin: "6px 0 4px", fontSize: 28 }}>{draft.brand}</h2>
         <p className="muted" style={{ margin: 0, lineHeight: 1.5 }}>{draft.signal || "No current UGC signal recorded yet."}</p>
@@ -245,6 +254,7 @@ function LeadCard({
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 10 }}>
       <div><span className="micro">COMP</span><div style={{ marginTop: 4 }}>{draft.compensation || "Not listed"}</div></div>
       <div><span className="micro">CONTACT</span><div style={{ marginTop: 4 }}>{draft.contactName || draft.contactEmail || "Not found yet"}</div></div>
+      <div><span className="micro">LAST VERIFIED</span><div style={{ marginTop: 4 }}>{formatDate(draft.lastVerifiedAt)}</div></div>
       <div><span className="micro">LAST CONTACT</span><div style={{ marginTop: 4 }}>{formatDate(draft.lastContactedAt)}</div></div>
       <div><span className="micro">NEXT FOLLOW-UP</span><div style={{ marginTop: 4 }}>{formatDate(draft.nextFollowUpAt)}</div></div>
     </div>
@@ -306,6 +316,8 @@ export function UgcBrandCrm({ initialLeads }: { initialLeads: UgcBrandLead[] }) 
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("General");
   const [error, setError] = useState("");
+
+  useEffect(() => setLeads(initialLeads), [initialLeads]);
 
   const due = leads.filter(followUpDue).length;
   const stale = leads.filter(researchStale).length;
