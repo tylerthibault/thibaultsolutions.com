@@ -1,9 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
-const STATUSES = ["NEW", "RESEARCH", "PITCH", "APPLIED", "FOLLOW_UP", "WON", "PASS"] as const;
-type UgcStatus = typeof STATUSES[number];
+import { UGC_BRAND_UGC_BRAND_STATUSES, type UgcBrandStatus } from "@/src/lib/ugc-brand-types";
 
 export type UgcBrandLead = {
   id: string;
@@ -14,7 +12,7 @@ export type UgcBrandLead = {
   sourceUrl: string | null;
   compensation: string;
   creatorFit: string;
-  status: UgcStatus;
+  status: UgcBrandStatus;
   contactName: string | null;
   contactEmail: string | null;
   contactUrl: string | null;
@@ -37,7 +35,7 @@ function toIsoOrNull(value: string) {
   return value ? new Date(`${value}T12:00:00`).toISOString() : null;
 }
 
-function isClosed(status: UgcStatus) {
+function isClosed(status: UgcBrandStatus) {
   return status === "WON" || status === "PASS";
 }
 
@@ -234,13 +232,13 @@ function LeadCard({
         aria-label="Pipeline status"
         value={draft.status}
         onChange={(e) => {
-          const status = e.target.value as UgcStatus;
+          const status = e.target.value as UgcBrandStatus;
           setDraft({ ...draft, status });
           void save({ status });
         }}
         style={{ ...inputStyle, width: 160, fontWeight: 800 }}
       >
-        {STATUSES.map((status) => <option key={status}>{status}</option>)}
+        {UGC_BRAND_STATUSES.map((status) => <option key={status}>{status}</option>)}
       </select>
     </div>
 
