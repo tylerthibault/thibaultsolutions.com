@@ -32,7 +32,7 @@ export default async function UgcBrandRadarPage() {
       <div className="cc-panel" style={{ padding: 18, marginTop: 20 }}>
         <span className="micro">RESEARCH FEED</span>
         <p className="muted" style={{ lineHeight: 1.6, margin: "8px 0 12px" }}>
-          The CRM is ready to receive researched opportunities, but it does not pretend to scrape the web by itself. Fresh leads can be curated into this database as they are verified; an automated provider can be connected later without changing the pipeline model.
+          Fresh opportunities are curated into the CRM with source links, compensation notes, and fit checks. Leads older than 14 days are flagged so you know what needs re-verification before you pitch. The site does not silently scrape or invent opportunities.
         </p>
         <Link className="btn" href="/creative-circle/admin">BACK TO SITE ADMIN</Link>
       </div>
