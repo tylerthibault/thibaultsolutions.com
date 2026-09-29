@@ -5,8 +5,8 @@ import { apiSessionUser } from "@/src/lib/api-auth";
 import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { ugcBrandLeads } from "@/src/lib/ugc-brand-crm";
+import { UGC_BRAND_STATUSES } from "@/src/lib/ugc-brand-types";
 
-const statuses = ["NEW", "RESEARCH", "PITCH", "APPLIED", "FOLLOW_UP", "WON", "PASS"] as const;
 const patchSchema = z.object({
   brand: z.string().trim().min(1).max(160).optional(),
   category: z.string().trim().max(120).optional(),
@@ -15,7 +15,7 @@ const patchSchema = z.object({
   sourceUrl: z.string().trim().url().or(z.literal("")).nullable().optional(),
   compensation: z.string().trim().max(160).optional(),
   creatorFit: z.string().trim().max(600).optional(),
-  status: z.enum(statuses).optional(),
+  status: z.enum(UGC_BRAND_STATUSES).optional(),
   contactName: z.string().trim().max(160).nullable().optional(),
   contactEmail: z.string().trim().email().or(z.literal("")).nullable().optional(),
   contactUrl: z.string().trim().url().or(z.literal("")).nullable().optional(),
