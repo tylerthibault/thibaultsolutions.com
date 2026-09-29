@@ -4,7 +4,7 @@ import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "./db";
 import { ugcBrandLeads, ugcDiscoveryTargets } from "./schema";
 
-export const UGC_DISCOVERY_SOURCE_TYPES = ["AUTO", "GREENHOUSE", "LEVER", "GENERIC"] as const;
+export const UGC_DISCOVERY_SOURCE_TYPES = ["AUTO", "GREENHOUSE", "LEVER", "ASHBY", "GENERIC"] as const;
 export type UgcDiscoverySourceType = typeof UGC_DISCOVERY_SOURCE_TYPES[number];
 
 export type UgcDiscoveryTarget = typeof ugcDiscoveryTargets.$inferSelect;
@@ -17,6 +17,7 @@ export type UgcDiscoveryFinding = {
   provider: "Greenhouse" | "Lever" | "Careers page";
   score: number;
   publishedAt?: Date | null;
+  compensation?: string | null;
 };
 
 export type UgcRefreshResult = {
@@ -144,6 +145,7 @@ export function detectUgcDiscoverySourceType(raw: string): UgcDiscoverySourceTyp
     const host = url.hostname.toLowerCase();
     if (host.includes("greenhouse.io")) return "GREENHOUSE";
     if (host === "jobs.lever.co" || host === "api.lever.co" || host === "jobs.eu.lever.co" || host === "api.eu.lever.co") return "LEVER";
+    if (host === "jobs.ashbyhq.com" || host === "api.ashbyhq.com") return "ASHBY";
   } catch {
     return "GENERIC";
   }
@@ -166,6 +168,60 @@ function leverSite(raw: string) {
     if (match) return match[1];
   }
   return url.pathname.split("/").filter(Boolean)[0] || "";
+}
+
+function ashbyBoard(raw: string) {
+  const url = new URL(raw);
+  if (url.hostname === "api.ashbyhq.com") {
+    const match = url.pathname.match(/\/posting-api\/job-board\/([^/]+)/);
+    if (match) return match[1];
+  }
+  return url.pathname.split("/").filter(Boolean)[0] || "";
+}
+
+async function fetchAshby(raw: string, keywords: string[]): Promise<UgcDiscoveryFinding[]> {
+  const board = ashbyBoard(raw);
+  if (!board) throw new Error("Could not determine Ashby job board name");
+  const endpoint = `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(board)}?includeCompensation=true`;
+  const { text } = await safeFetchText(endpoint);
+  const payload = JSON.parse(text) as {
+    jobs?: Array<{
+      title?: string;
+      location?: string;
+      jobUrl?: string;
+      applyUrl?: string;
+      isListed?: boolean;
+      descriptionPlain?: string;
+      descriptionHtml?: string;
+      compensation?: {
+        compensationTierSummary?: string;
+        scrapeableCompensationSalarySummary?: string;
+      };
+    }>;
+  };
+
+  return (payload.jobs ?? [])
+    .filter((job) => job.isListed !== false)
+    .map((job) => {
+      const title = job.title?.trim() || "Untitled opportunity";
+      const body = job.descriptionPlain || stripHtml(job.descriptionHtml || "");
+      const score = relevanceScore(title, body, keywords);
+      const compensation = job.compensation?.scrapeableCompensationSalarySummary
+        || job.compensation?.compensationTierSummary
+        || null;
+      return {
+        title,
+        url: job.jobUrl || job.applyUrl || raw,
+        applyUrl: job.applyUrl || job.jobUrl || raw,
+        location: job.location || null,
+        provider: "Ashby" as const,
+        score,
+        publishedAt: null,
+        compensation,
+      };
+    })
+    .filter((finding) => finding.score > 0)
+    .sort((a, b) => b.score - a.score);
 }
 
 async function fetchGreenhouse(raw: string, keywords: string[]): Promise<UgcDiscoveryFinding[]> {
@@ -272,6 +328,7 @@ async function fetchGeneric(raw: string, keywords: string[], depth = 0): Promise
     const provider = detectUgcDiscoverySourceType(providerLink.url);
     if (provider === "GREENHOUSE") return fetchGreenhouse(providerLink.url, keywords);
     if (provider === "LEVER") return fetchLever(providerLink.url, keywords);
+    if (provider === "ASHBY") return fetchAshby(providerLink.url, keywords);
   }
 
   const seen = new Set<string>();
@@ -314,6 +371,7 @@ async function findingsForTarget(target: UgcDiscoveryTarget) {
 
   if (sourceType === "GREENHOUSE") return fetchGreenhouse(target.sourceUrl, keywords);
   if (sourceType === "LEVER") return fetchLever(target.sourceUrl, keywords);
+  if (sourceType === "ASHBY") return fetchAshby(target.sourceUrl, keywords);
   return fetchGeneric(target.sourceUrl, keywords);
 }
 
@@ -341,6 +399,7 @@ async function upsertLeadFromFinding(target: UgcDiscoveryTarget, finding: UgcDis
       source,
       sourceUrl: finding.url,
       contactUrl: existing.contactUrl || finding.applyUrl || finding.url,
+      compensation: existing.compensation === "Not listed" && finding.compensation ? finding.compensation : existing.compensation,
       lastVerifiedAt: now,
       discoveredAt: existing.discoveredAt || now,
       researchedAt: now,
@@ -356,7 +415,7 @@ async function upsertLeadFromFinding(target: UgcDiscoveryTarget, finding: UgcDis
     source,
     sourceUrl: finding.url,
     contactUrl: finding.applyUrl || finding.url,
-    compensation: "Not listed",
+    compensation: finding.compensation || "Not listed",
     creatorFit: "Potential UGC / creator opportunity discovered automatically. Review the source before outreach.",
     status: "RESEARCH",
     researchNotes: `Auto-discovered from ${target.sourceUrl}. Verify deliverables, usage rights, compensation, and contact details before pitching.`,
