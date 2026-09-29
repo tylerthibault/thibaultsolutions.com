@@ -1,3 +1,4 @@
+import { ilike } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiSessionUser } from "@/src/lib/api-auth";
@@ -41,6 +42,10 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid lead", details: parsed.error.flatten() }, { status: 400 });
   await ensureUgcBrandCrm();
   const data = parsed.data;
+  const [duplicate] = await db.select({ id: ugcBrandLeads.id }).from(ugcBrandLeads)
+    .where(ilike(ugcBrandLeads.brand, data.brand)).limit(1);
+  if (duplicate) return NextResponse.json({ error: "That brand is already in the radar" }, { status: 409 });
+
   const [lead] = await db.insert(ugcBrandLeads).values({
     ...data,
     sourceUrl: data.sourceUrl || null,
