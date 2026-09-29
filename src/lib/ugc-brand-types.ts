@@ -3,3 +3,7 @@ export const UGC_BRAND_STATUSES = ["NEW", "RESEARCH", "PITCH", "APPLIED", "FOLLO
 export type UgcBrandStatus = typeof UGC_BRAND_STATUSES[number];
 
 export const UGC_CLOSED_STATUSES = new Set<UgcBrandStatus>(["WON", "PASS"]);
+
+export function isUgcBrandStatus(value: string): value is UgcBrandStatus {
+  return (UGC_BRAND_STATUSES as readonly string[]).includes(value);
+}
