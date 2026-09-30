@@ -15,6 +15,7 @@ export function TeleprompterStudio() {
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
+  const scrollPositionRef = useRef(0);
 
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [speed, setSpeed] = useState(38);
@@ -76,6 +77,7 @@ export function TeleprompterStudio() {
 
   function resetPrompt() {
     const prompt = promptRef.current;
+    scrollPositionRef.current = 0;
     if (prompt) prompt.scrollTop = 0;
     setPlaying(false);
     lastFrameRef.current = null;
@@ -83,6 +85,8 @@ export function TeleprompterStudio() {
 
   function togglePlayback() {
     if (!script.trim()) return;
+    const prompt = promptRef.current;
+    if (!playing && prompt) scrollPositionRef.current = prompt.scrollTop;
     setPlaying((value) => !value);
     lastFrameRef.current = null;
   }
@@ -110,6 +114,9 @@ export function TeleprompterStudio() {
       return;
     }
 
+    const prompt = promptRef.current;
+    if (prompt) scrollPositionRef.current = prompt.scrollTop;
+
     function tick(timestamp: number) {
       const prompt = promptRef.current;
       if (!prompt) return;
@@ -117,10 +124,19 @@ export function TeleprompterStudio() {
       const previous = lastFrameRef.current ?? timestamp;
       const delta = Math.min(timestamp - previous, 100);
       lastFrameRef.current = timestamp;
-      prompt.scrollTop += speed * (delta / 1000);
 
-      const atEnd = prompt.scrollTop + prompt.clientHeight >= prompt.scrollHeight - 3;
-      if (atEnd) {
+      // Keep a floating-point position instead of incrementing scrollTop directly.
+      // iOS WebKit rounds scrollTop to whole pixels, so sub-pixel increments can
+      // otherwise be discarded every frame at normal teleprompter speeds.
+      const maxScroll = Math.max(0, prompt.scrollHeight - prompt.clientHeight);
+      const nextPosition = Math.min(
+        maxScroll,
+        scrollPositionRef.current + speed * (delta / 1000),
+      );
+      scrollPositionRef.current = nextPosition;
+      prompt.scrollTop = nextPosition;
+
+      if (nextPosition >= maxScroll - 1) {
         setPlaying(false);
         return;
       }
