@@ -28,9 +28,20 @@ export default async function CreativeCircleHome() {
       meta: "PROCESS / RENDER / EXPORT",
       glyph: "◫",
     }] : []),
+    {
+      href: "/creative-circle/teleprompter",
+      number: "02",
+      label: "TELEPROMPTER",
+      title: "Perform",
+      accent: "amber",
+      description: "Read naturally over a live camera preview with adjustable pacing, type size, eye line, and camera direction.",
+      action: "Open prompter",
+      meta: "SCRIPT / CAMERA / DELIVER",
+      glyph: "▤",
+    },
     ...(permissions.feedbackAccess ? [{
       href: "/creative-circle/review",
-      number: "02",
+      number: "03",
       label: "FEEDBACK LAB",
       title: "Review",
       accent: "lime",
@@ -41,7 +52,7 @@ export default async function CreativeCircleHome() {
     }] : []),
     ...(admin ? [{
       href: "/creative-circle/admin/ugc-brands",
-      number: "03",
+      number: "04",
       label: "UGC RADAR",
       title: "Discover",
       accent: "violet",
@@ -132,6 +143,7 @@ export default async function CreativeCircleHome() {
         </div>
         <div className="cc-quick-links">
           {permissions.labAccess && <Link href="/creative-circle/new">NEW VIDEO <span>+</span></Link>}
+          <Link href="/creative-circle/teleprompter">OPEN PROMPTER <span>▶</span></Link>
           {permissions.feedbackAccess && <Link href="/creative-circle/review">OPEN REVIEWS <span>↗</span></Link>}
           {admin && <Link href="/creative-circle/admin">SITE ADMIN <span>⌘</span></Link>}
         </div>
