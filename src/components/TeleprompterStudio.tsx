@@ -365,10 +365,14 @@ export function TeleprompterStudio() {
   });
 
   useEffect(() => () => {
-    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.onstop = null;
+      recorder.stop();
+    }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     micStreamRef.current?.getTracks().forEach((track) => track.stop());
-    clearRecordingTimer();
+    if (recordingTimerRef.current !== null) window.clearInterval(recordingTimerRef.current);
     if (recordingUrlRef.current) URL.revokeObjectURL(recordingUrlRef.current);
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
   }, []);
