@@ -8,11 +8,46 @@ The teleprompter will scroll over your live camera preview so you can keep your 
 
 Adjust the speed and text size until the pacing feels natural, then press Start.`;
 
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function preferredRecordingMimeType() {
+  if (typeof MediaRecorder === "undefined") return "";
+
+  const candidates = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4",
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+  ];
+
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+}
+
+function recordingExtension(mimeType: string) {
+  return mimeType.includes("mp4") ? "mp4" : "webm";
+}
+
+function recordingFilename(mimeType: string) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `creative-circle-${stamp}.${recordingExtension(mimeType)}`;
+}
+
 export function TeleprompterStudio() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordingUrlRef = useRef<string | null>(null);
+  const recordingStartedAtRef = useRef<number | null>(null);
+  const recordingTimerRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
   const scrollPositionRef = useRef(0);
@@ -27,21 +62,53 @@ export function TeleprompterStudio() {
   const [mirror, setMirror] = useState(true);
   const [showGuide, setShowGuide] = useState(true);
   const [showControls, setShowControls] = useState(true);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingError, setRecordingError] = useState("");
+  const [recordedUrl, setRecordedUrl] = useState("");
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedMimeType, setRecordedMimeType] = useState("");
 
-  function stopCamera() {
+  function clearRecordingTimer() {
+    if (recordingTimerRef.current !== null) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    recordingStartedAtRef.current = null;
+  }
+
+  function stopMic() {
+    micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    micStreamRef.current = null;
+  }
+
+  function discardRecording() {
+    if (recordingUrlRef.current) {
+      URL.revokeObjectURL(recordingUrlRef.current);
+      recordingUrlRef.current = null;
+    }
+    setRecordedUrl("");
+    setRecordedBlob(null);
+    setRecordedMimeType("");
+  }
+
+  function stopCamera(force = false) {
+    if (recording && !force) return;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setCameraOn(false);
   }
 
-  async function startCamera(nextFacingMode = facingMode) {
+  async function startCamera(nextFacingMode = facingMode): Promise<MediaStream | null> {
     setCameraError("");
-    stopCamera();
+    if (recording) return streamRef.current;
+
+    stopCamera(true);
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError("Camera access is not supported in this browser.");
-      return;
+      return null;
     }
 
     try {
@@ -60,15 +127,18 @@ export function TeleprompterStudio() {
         await videoRef.current.play();
       }
       setCameraOn(true);
+      return stream;
     } catch (error) {
       const message = error instanceof DOMException && error.name === "NotAllowedError"
         ? "Camera permission was denied. Allow camera access in your browser and try again."
         : "I could not open this device's camera.";
       setCameraError(message);
+      return null;
     }
   }
 
   async function switchCamera() {
+    if (recording) return;
     const next = facingMode === "user" ? "environment" : "user";
     setFacingMode(next);
     setMirror(next === "user");
@@ -103,6 +173,132 @@ export function TeleprompterStudio() {
       }
     } catch {
       // Fullscreen is optional; the studio still works without it.
+    }
+  }
+
+  async function startRecording() {
+    if (recording) return;
+    setRecordingError("");
+
+    if (typeof MediaRecorder === "undefined") {
+      setRecordingError("Video recording is not supported in this browser.");
+      return;
+    }
+
+    let cameraStream = streamRef.current;
+    const hasLiveVideo = cameraStream?.getVideoTracks().some((track) => track.readyState === "live") === true;
+    if (!hasLiveVideo) cameraStream = await startCamera();
+    if (!cameraStream) return;
+
+    try {
+      stopMic();
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      micStreamRef.current = micStream;
+
+      const recordingStream = new MediaStream([
+        ...cameraStream.getVideoTracks(),
+        ...micStream.getAudioTracks(),
+      ]);
+
+      const mimeType = preferredRecordingMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(recordingStream, { mimeType })
+        : new MediaRecorder(recordingStream);
+
+      chunksRef.current = [];
+      recorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+
+      recorder.onerror = () => {
+        setRecordingError("The browser reported a recording error. Please try again.");
+      };
+
+      recorder.onstop = () => {
+        const finalType = recorder.mimeType || mimeType || "video/webm";
+        const blob = new Blob(chunksRef.current, { type: finalType });
+
+        clearRecordingTimer();
+        stopMic();
+        setRecording(false);
+        recorderRef.current = null;
+
+        if (!blob.size) {
+          setRecordingError("The recording stopped, but the browser did not return a video file.");
+          return;
+        }
+
+        if (recordingUrlRef.current) URL.revokeObjectURL(recordingUrlRef.current);
+        const url = URL.createObjectURL(blob);
+        recordingUrlRef.current = url;
+        setRecordedBlob(blob);
+        setRecordedMimeType(finalType);
+        setRecordedUrl(url);
+      };
+
+      discardRecording();
+      setRecordingSeconds(0);
+      recordingStartedAtRef.current = Date.now();
+      recordingTimerRef.current = window.setInterval(() => {
+        const startedAt = recordingStartedAtRef.current;
+        if (startedAt) setRecordingSeconds(Math.floor((Date.now() - startedAt) / 1000));
+      }, 250);
+
+      recorder.start(500);
+      setRecording(true);
+    } catch (error) {
+      stopMic();
+      clearRecordingTimer();
+      const message = error instanceof DOMException && error.name === "NotAllowedError"
+        ? "Microphone permission was denied. Allow microphone access to record video with audio."
+        : "I could not start recording on this device.";
+      setRecordingError(message);
+    }
+  }
+
+  function stopRecording() {
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+    recorder.stop();
+  }
+
+  function downloadRecording() {
+    if (!recordedBlob || !recordedUrl) return;
+    const anchor = document.createElement("a");
+    anchor.href = recordedUrl;
+    anchor.download = recordingFilename(recordedMimeType || recordedBlob.type);
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  }
+
+  async function shareRecording() {
+    if (!recordedBlob) return;
+    const mimeType = recordedMimeType || recordedBlob.type || "video/mp4";
+    const file = new File([recordedBlob], recordingFilename(mimeType), { type: mimeType });
+
+    if (typeof navigator.share !== "function") {
+      downloadRecording();
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: "Creative Circle recording",
+        files: [file],
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setRecordingError("Sharing is not available here. Use Save Recording instead.");
     }
   }
 
@@ -161,7 +357,7 @@ export function TeleprompterStudio() {
         event.preventDefault();
         togglePlayback();
       }
-      if (event.key.toLowerCase() === "r") resetPrompt();
+      if (event.key.toLowerCase() === "r" && !recording) resetPrompt();
     }
 
     window.addEventListener("keydown", onKeyDown);
@@ -169,7 +365,11 @@ export function TeleprompterStudio() {
   });
 
   useEffect(() => () => {
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
     streamRef.current?.getTracks().forEach((track) => track.stop());
+    micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    clearRecordingTimer();
+    if (recordingUrlRef.current) URL.revokeObjectURL(recordingUrlRef.current);
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
   }, []);
 
@@ -253,19 +453,19 @@ export function TeleprompterStudio() {
       <div className="teleprompter-toolbar">
         <div className="teleprompter-camera-state">
           <span className={cameraOn ? "live" : ""}><i /> {cameraOn ? "CAMERA LIVE" : "CAMERA OFF"}</span>
-          <small>{facingMode === "user" ? "FRONT CAMERA" : "REAR CAMERA"}</small>
+          <small>{facingMode === "user" ? "FRONT CAMERA" : "REAR CAMERA"} · MIC RECORDS WITH VIDEO</small>
         </div>
 
         <div className="teleprompter-toolbar-actions">
-          <button type="button" onClick={() => cameraOn ? stopCamera() : void startCamera()}>
+          <button type="button" disabled={recording} onClick={() => cameraOn ? stopCamera() : void startCamera()}>
             {cameraOn ? "STOP CAMERA" : "ENABLE CAMERA"}
           </button>
-          <button type="button" onClick={() => void switchCamera()}>FLIP</button>
+          <button type="button" disabled={recording} onClick={() => void switchCamera()}>FLIP</button>
           <button type="button" onClick={() => void toggleFullscreen()}>FULLSCREEN ↗</button>
         </div>
       </div>
 
-      {cameraError && <div className="teleprompter-camera-error">{cameraError}</div>}
+      {(cameraError || recordingError) && <div className="teleprompter-camera-error">{recordingError || cameraError}</div>}
 
       <div ref={stageRef} className="teleprompter-stage">
         <video
@@ -282,11 +482,17 @@ export function TeleprompterStudio() {
             <i />
           </div>
           <strong>Camera preview</strong>
-          <p>Enable the camera when you are ready to rehearse.</p>
+          <p>Enable the camera when you are ready to rehearse or record.</p>
         </div>}
 
         <div className="teleprompter-vignette" aria-hidden="true" />
         {showGuide && <div className="teleprompter-eye-guide" aria-hidden="true"><span>EYE LINE</span></div>}
+
+        {recording && <div className="teleprompter-recording-badge">
+          <i />
+          REC
+          <strong>{formatDuration(recordingSeconds)}</strong>
+        </div>}
 
         <div
           ref={promptRef}
@@ -309,6 +515,14 @@ export function TeleprompterStudio() {
             <span>{playing ? "Ⅱ" : "▶"}</span>
             {playing ? "PAUSE" : "START"}
           </button>
+          <button
+            type="button"
+            className={`teleprompter-record${recording ? " recording" : ""}`}
+            onClick={() => recording ? stopRecording() : void startRecording()}
+          >
+            <i />
+            {recording ? `STOP ${formatDuration(recordingSeconds)}` : "RECORD"}
+          </button>
           <div className="teleprompter-speed-readout">
             <span>SPEED</span>
             <strong>{speed}</strong>
@@ -317,9 +531,25 @@ export function TeleprompterStudio() {
       </div>
 
       <div className="teleprompter-footnote">
-        <span>Camera stays on this device and is not uploaded.</span>
+        <span>Recording stays on this device. The teleprompter text is not burned into the video.</span>
         <span>Best results: place the eye line close to your camera lens.</span>
       </div>
+
+      {recordedUrl && <section className="teleprompter-recording-result">
+        <div className="teleprompter-recording-result-copy">
+          <span className="micro">LATEST TAKE</span>
+          <h3>Recording ready.</h3>
+          <p>
+            Review the take, save it to this device, or use Share on mobile to send it directly into your editing workflow.
+          </p>
+          <div className="teleprompter-recording-actions">
+            <button type="button" className="primary" onClick={downloadRecording}>SAVE RECORDING</button>
+            <button type="button" onClick={() => void shareRecording()}>SHARE</button>
+            <button type="button" onClick={discardRecording}>DISCARD</button>
+          </div>
+        </div>
+        <video className="teleprompter-recording-preview" src={recordedUrl} controls playsInline />
+      </section>}
     </section>
   </div>;
 }
