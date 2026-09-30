@@ -55,6 +55,12 @@ export function CcNavClient({
       shortLabel: "Video",
       active: (value: string) => value.startsWith("/creative-circle/lab") || value.startsWith("/creative-circle/project"),
     }] : []),
+    ...(!publicGuest ? [{
+      href: "/creative-circle/teleprompter",
+      label: "Teleprompter",
+      shortLabel: "Prompt",
+      active: (value: string) => value.startsWith("/creative-circle/teleprompter"),
+    }] : []),
     ...((feedbackAccess || publicGuest) ? [{
       href: "/creative-circle/review",
       label: "Feedback Lab",
