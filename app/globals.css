@@ -1609,3 +1609,42 @@
   padding-left:max(26px,calc(env(safe-area-inset-left) + 20px));
   padding-right:max(26px,calc(env(safe-area-inset-right) + 20px));
 }
+
+
+/* Teleprompter script actions */
+.teleprompter-editor-head-actions{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.teleprompter-clear-script{
+  min-height:34px;
+  padding:0 10px;
+  border:1px solid #4a3135;
+  border-radius:9px;
+  background:#140b0d;
+  color:#ff7c83;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.07em;
+}
+.teleprompter-clear-script:hover{
+  border-color:#ff5c67;
+  color:#fff;
+}
+.teleprompter-clear-script:disabled{
+  opacity:.35;
+  cursor:not-allowed;
+}
+@media(max-width:560px){
+  .teleprompter-editor-head{
+    align-items:center;
+  }
+  .teleprompter-editor-head-actions{
+    gap:5px;
+  }
+  .teleprompter-clear-script{
+    padding-inline:8px;
+    font-size:6px;
+  }
+}
