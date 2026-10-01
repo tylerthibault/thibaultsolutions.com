@@ -425,14 +425,24 @@ export function TeleprompterStudio() {
           <span className="micro">SCRIPT</span>
           <h2>What are we saying?</h2>
         </div>
-        <button
-          className="teleprompter-collapse"
-          type="button"
-          onClick={() => setShowControls((value) => !value)}
-          aria-label={showControls ? "Hide script editor" : "Show script editor"}
-        >
-          {showControls ? "←" : "→"}
-        </button>
+        <div className="teleprompter-editor-head-actions">
+          {showControls && <button
+            className="teleprompter-clear-script"
+            type="button"
+            onClick={() => { setScript(""); resetPrompt(); }}
+            disabled={!script}
+          >
+            CLEAR SCRIPT
+          </button>}
+          <button
+            className="teleprompter-collapse"
+            type="button"
+            onClick={() => setShowControls((value) => !value)}
+            aria-label={showControls ? "Hide script editor" : "Show script editor"}
+          >
+            {showControls ? "←" : "→"}
+          </button>
+        </div>
       </div>
 
       {showControls && <>
@@ -449,7 +459,7 @@ export function TeleprompterStudio() {
 
         <div className="teleprompter-editor-meta">
           <span>{script.trim() ? script.trim().split(/\s+/).length : 0} WORDS</span>
-          <button type="button" onClick={() => { setScript(""); resetPrompt(); }}>CLEAR</button>
+          <span>READY FOR NEXT SCRIPT</span>
         </div>
 
         <div className="teleprompter-settings">
