@@ -1555,3 +1555,57 @@
   .teleprompter-recording-result-copy{padding:8px}
   .teleprompter-recording-actions button{flex:1}
 }
+
+
+/* Teleprompter eye-line + fullscreen controls */
+.teleprompter-stage:fullscreen{
+  width:100vw;
+  height:100dvh;
+  max-height:none;
+  min-height:0;
+  border:0;
+  border-radius:0;
+}
+.teleprompter-stage.pseudo-fullscreen{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  width:100vw;
+  height:100dvh;
+  max-height:none;
+  min-height:0;
+  border:0;
+  border-radius:0;
+  margin:0;
+}
+.teleprompter-fullscreen-exit{
+  position:absolute;
+  z-index:12;
+  top:max(12px,env(safe-area-inset-top));
+  right:max(12px,env(safe-area-inset-right));
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.26);
+  border-radius:50%;
+  background:rgba(7,9,13,.72);
+  color:#fff;
+  font-size:24px;
+  line-height:1;
+  backdrop-filter:blur(14px);
+  box-shadow:0 10px 30px rgba(0,0,0,.3);
+}
+.teleprompter-fullscreen-exit:hover{
+  border-color:#ffcf5a;
+  color:#ffcf5a;
+}
+.teleprompter-stage.pseudo-fullscreen .teleprompter-stage-controls,
+.teleprompter-stage:fullscreen .teleprompter-stage-controls{
+  bottom:max(18px,calc(env(safe-area-inset-bottom) + 10px));
+}
+.teleprompter-stage.pseudo-fullscreen .teleprompter-prompt,
+.teleprompter-stage:fullscreen .teleprompter-prompt{
+  padding-left:max(26px,calc(env(safe-area-inset-left) + 20px));
+  padding-right:max(26px,calc(env(safe-area-inset-right) + 20px));
+}
