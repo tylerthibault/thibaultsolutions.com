@@ -89,6 +89,7 @@ export function TeleprompterStudio() {
   const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [fullscreenInstallHint, setFullscreenInstallHint] = useState(false);
 
   const fullscreenActive = pseudoFullscreen || nativeFullscreen;
 
@@ -190,6 +191,7 @@ export function TeleprompterStudio() {
 
     if (pseudoFullscreen) {
       setPseudoFullscreen(false);
+      setFullscreenInstallHint(false);
       return;
     }
 
@@ -199,22 +201,31 @@ export function TeleprompterStudio() {
       } catch {
         setNativeFullscreen(false);
       }
+      setFullscreenInstallHint(false);
       return;
     }
 
     const requestFullscreen = stage.requestFullscreen?.bind(stage);
     if (requestFullscreen) {
       try {
-        await requestFullscreen();
+        await requestFullscreen({ navigationUI: "hide" });
+        setFullscreenInstallHint(false);
         return;
       } catch {
-        // iOS/WebKit can expose the API but reject element fullscreen.
+        // Some mobile browsers reject element fullscreen or keep browser chrome.
       }
     }
 
-    // Reliable fallback for mobile browsers that do not support arbitrary
-    // element fullscreen. This fills the viewport while keeping prompt overlays.
+    // Fallback fills the available viewport while preserving all custom controls.
+    // Browser chrome cannot be forcibly removed from a normal iOS/Safari tab, so
+    // installed standalone mode is the reliable browser-free path there.
+    const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
+    const runningStandalone =
+      window.matchMedia?.("(display-mode: standalone)").matches === true ||
+      navigatorWithStandalone.standalone === true;
+
     setPseudoFullscreen(true);
+    setFullscreenInstallHint(!runningStandalone);
   }
 
   async function startRecording() {
@@ -631,6 +642,12 @@ export function TeleprompterStudio() {
           onClick={() => void toggleFullscreen()}
           aria-label="Exit fullscreen"
         >×</button>}
+
+        {pseudoFullscreen && fullscreenInstallHint && <div className="teleprompter-fullscreen-hint">
+          <strong>BROWSER-FREE MODE</strong>
+          <span>Add Creative Circle to your Home Screen, then open it there to remove the URL bar and browser controls.</span>
+          <button type="button" onClick={() => setFullscreenInstallHint(false)}>GOT IT</button>
+        </div>}
 
         {recording && <div className="teleprompter-recording-badge">
           <i />
