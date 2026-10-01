@@ -12,6 +12,8 @@ type TeleprompterSettings = {
   mirror: boolean;
   showGuide: boolean;
   showControls: boolean;
+  cinematicEnabled: boolean;
+  cinematicDepth: number;
 };
 
 const DEFAULT_SCRIPT = `Paste your script here.
@@ -54,12 +56,132 @@ function recordingFilename(mimeType: string) {
   return `creative-circle-${stamp}.${recordingExtension(mimeType)}`;
 }
 
+const CINEMATIC_MAX_LONG_EDGE = 1920;
+
+function renderCinematicFrame(
+  video: HTMLVideoElement,
+  canvas: HTMLCanvasElement,
+  subjectCanvas: HTMLCanvasElement,
+  blurCanvas: HTMLCanvasElement,
+  depthValue: number,
+) {
+  if (
+    video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+    || !video.videoWidth
+    || !video.videoHeight
+  ) {
+    return false;
+  }
+
+  const sourceWidth = video.videoWidth;
+  const sourceHeight = video.videoHeight;
+  const outputScale = Math.min(
+    1,
+    CINEMATIC_MAX_LONG_EDGE / Math.max(sourceWidth, sourceHeight),
+  );
+  const width = Math.max(2, Math.round(sourceWidth * outputScale));
+  const height = Math.max(2, Math.round(sourceHeight * outputScale));
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  if (subjectCanvas.width !== width || subjectCanvas.height !== height) {
+    subjectCanvas.width = width;
+    subjectCanvas.height = height;
+  }
+
+  const depth = clampNumber(depthValue, 0, 100, 58) / 100;
+  const blurScale = 0.36 - depth * 0.14;
+  const blurWidth = Math.max(2, Math.round(width * blurScale));
+  const blurHeight = Math.max(2, Math.round(height * blurScale));
+
+  if (blurCanvas.width !== blurWidth || blurCanvas.height !== blurHeight) {
+    blurCanvas.width = blurWidth;
+    blurCanvas.height = blurHeight;
+  }
+
+  const context = canvas.getContext("2d", { alpha: false });
+  const subjectContext = subjectCanvas.getContext("2d");
+  const blurContext = blurCanvas.getContext("2d", { alpha: false });
+  if (!context || !subjectContext || !blurContext) return false;
+
+  blurContext.imageSmoothingEnabled = true;
+  blurContext.imageSmoothingQuality = "high";
+  blurContext.clearRect(0, 0, blurWidth, blurHeight);
+  blurContext.drawImage(video, 0, 0, blurWidth, blurHeight);
+
+  context.save();
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.fillStyle = "#000";
+  context.fillRect(0, 0, width, height);
+  context.filter = `blur(${(3 + depth * 7).toFixed(1)}px) saturate(${(1.02 + depth * 0.06).toFixed(3)}) contrast(1.03) brightness(${(0.97 - depth * 0.09).toFixed(3)})`;
+  const pad = Math.max(10, Math.round(Math.min(width, height) * 0.02));
+  context.drawImage(blurCanvas, -pad, -pad, width + pad * 2, height + pad * 2);
+  context.restore();
+
+  subjectContext.clearRect(0, 0, width, height);
+  subjectContext.globalCompositeOperation = "source-over";
+  subjectContext.filter = "contrast(1.025) saturate(1.035)";
+  subjectContext.drawImage(video, 0, 0, width, height);
+  subjectContext.filter = "none";
+  subjectContext.globalCompositeOperation = "destination-in";
+
+  const focusX = width * 0.5;
+  const focusY = height * 0.46;
+  const radiusX = width * (0.41 - depth * 0.055);
+  const radiusY = height * (0.62 - depth * 0.07);
+
+  subjectContext.save();
+  subjectContext.translate(focusX, focusY);
+  subjectContext.scale(1, radiusY / radiusX);
+  const focusMask = subjectContext.createRadialGradient(
+    0,
+    0,
+    radiusX * 0.54,
+    0,
+    0,
+    radiusX,
+  );
+  focusMask.addColorStop(0, "rgba(0,0,0,1)");
+  focusMask.addColorStop(0.58, "rgba(0,0,0,1)");
+  focusMask.addColorStop(1, "rgba(0,0,0,0)");
+  subjectContext.fillStyle = focusMask;
+  subjectContext.fillRect(-width * 2, -height * 2, width * 4, height * 4);
+  subjectContext.restore();
+  subjectContext.globalCompositeOperation = "source-over";
+
+  context.drawImage(subjectCanvas, 0, 0);
+
+  const vignette = context.createRadialGradient(
+    width * 0.5,
+    height * 0.46,
+    Math.min(width, height) * 0.24,
+    width * 0.5,
+    height * 0.46,
+    Math.max(width, height) * 0.72,
+  );
+  vignette.addColorStop(0, "rgba(0,0,0,0)");
+  vignette.addColorStop(0.72, "rgba(0,0,0,0)");
+  vignette.addColorStop(1, `rgba(0,0,0,${(0.11 + depth * 0.08).toFixed(3)})`);
+  context.fillStyle = vignette;
+  context.fillRect(0, 0, width, height);
+
+  return true;
+}
+
 export function TeleprompterStudio() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const processedVideoStreamRef = useRef<MediaStream | null>(null);
+  const cinematicCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cinematicSubjectCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cinematicBlurCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cinematicRafRef = useRef<number | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingUrlRef = useRef<string | null>(null);
@@ -80,6 +202,8 @@ export function TeleprompterStudio() {
   const [mirror, setMirror] = useState(true);
   const [showGuide, setShowGuide] = useState(true);
   const [showControls, setShowControls] = useState(true);
+  const [cinematicEnabled, setCinematicEnabled] = useState(false);
+  const [cinematicDepth, setCinematicDepth] = useState(58);
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingError, setRecordingError] = useState("");
@@ -103,6 +227,11 @@ export function TeleprompterStudio() {
   function stopMic() {
     micStreamRef.current?.getTracks().forEach((track) => track.stop());
     micStreamRef.current = null;
+  }
+
+  function stopProcessedVideo() {
+    processedVideoStreamRef.current?.getTracks().forEach((track) => track.stop());
+    processedVideoStreamRef.current = null;
   }
 
   function discardRecording() {
@@ -243,8 +372,45 @@ export function TeleprompterStudio() {
       });
       micStreamRef.current = micStream;
 
+      stopProcessedVideo();
+
+      let recordingVideoTracks = cameraStream.getVideoTracks();
+
+      if (cinematicEnabled) {
+        const canvas = cinematicCanvasRef.current;
+        if (!canvas || typeof canvas.captureStream !== "function") {
+          throw new Error("CINEMATIC_CAPTURE_UNSUPPORTED");
+        }
+
+        const sourceVideo = videoRef.current;
+        if (!sourceVideo) throw new Error("CINEMATIC_FRAME_UNAVAILABLE");
+
+        if (!cinematicSubjectCanvasRef.current) {
+          cinematicSubjectCanvasRef.current = document.createElement("canvas");
+        }
+        if (!cinematicBlurCanvasRef.current) {
+          cinematicBlurCanvasRef.current = document.createElement("canvas");
+        }
+
+        const rendered = renderCinematicFrame(
+          sourceVideo,
+          canvas,
+          cinematicSubjectCanvasRef.current,
+          cinematicBlurCanvasRef.current,
+          cinematicDepth,
+        );
+        if (!rendered) throw new Error("CINEMATIC_FRAME_UNAVAILABLE");
+
+        const processedStream = canvas.captureStream(30);
+        const processedTrack = processedStream.getVideoTracks()[0];
+        if (!processedTrack) throw new Error("CINEMATIC_CAPTURE_UNSUPPORTED");
+
+        processedVideoStreamRef.current = processedStream;
+        recordingVideoTracks = [processedTrack];
+      }
+
       const recordingStream = new MediaStream([
-        ...cameraStream.getVideoTracks(),
+        ...recordingVideoTracks,
         ...micStream.getAudioTracks(),
       ]);
 
@@ -270,6 +436,7 @@ export function TeleprompterStudio() {
 
         clearRecordingTimer();
         stopMic();
+        stopProcessedVideo();
         setRecording(false);
         recorderRef.current = null;
 
@@ -298,10 +465,15 @@ export function TeleprompterStudio() {
       setRecording(true);
     } catch (error) {
       stopMic();
+      stopProcessedVideo();
       clearRecordingTimer();
       const message = error instanceof DOMException && error.name === "NotAllowedError"
         ? "Microphone permission was denied. Allow microphone access to record video with audio."
-        : "I could not start recording on this device.";
+        : error instanceof Error && error.message === "CINEMATIC_CAPTURE_UNSUPPORTED"
+          ? "Cinematic Look can preview here, but this browser cannot record the processed video. Turn Cinematic Look off to record normally."
+          : error instanceof Error && error.message === "CINEMATIC_FRAME_UNAVAILABLE"
+            ? "The camera is still starting. Wait a moment and try recording again."
+            : "I could not start recording on this device.";
       setRecordingError(message);
     }
   }
@@ -357,6 +529,8 @@ export function TeleprompterStudio() {
         if (typeof saved.mirror === "boolean") setMirror(saved.mirror);
         if (typeof saved.showGuide === "boolean") setShowGuide(saved.showGuide);
         if (typeof saved.showControls === "boolean") setShowControls(saved.showControls);
+        if (typeof saved.cinematicEnabled === "boolean") setCinematicEnabled(saved.cinematicEnabled);
+        setCinematicDepth(clampNumber(saved.cinematicDepth, 0, 100, 58));
       }
     } catch {
       // Corrupt or unavailable local storage should never block the teleprompter.
@@ -376,6 +550,8 @@ export function TeleprompterStudio() {
       mirror,
       showGuide,
       showControls,
+      cinematicEnabled,
+      cinematicDepth,
     };
 
     try {
@@ -383,7 +559,60 @@ export function TeleprompterStudio() {
     } catch {
       // Private browsing/storage restrictions can disable localStorage.
     }
-  }, [settingsLoaded, speed, fontSize, eyeLinePosition, facingMode, mirror, showGuide, showControls]);
+  }, [
+    settingsLoaded,
+    speed,
+    fontSize,
+    eyeLinePosition,
+    facingMode,
+    mirror,
+    showGuide,
+    showControls,
+    cinematicEnabled,
+    cinematicDepth,
+  ]);
+
+  useEffect(() => {
+    if (!cinematicEnabled || !cameraOn) {
+      if (cinematicRafRef.current !== null) {
+        cancelAnimationFrame(cinematicRafRef.current);
+        cinematicRafRef.current = null;
+      }
+      return;
+    }
+
+    let active = true;
+    if (!cinematicSubjectCanvasRef.current) {
+      cinematicSubjectCanvasRef.current = document.createElement("canvas");
+    }
+    if (!cinematicBlurCanvasRef.current) {
+      cinematicBlurCanvasRef.current = document.createElement("canvas");
+    }
+    const subjectCanvas = cinematicSubjectCanvasRef.current;
+    const blurCanvas = cinematicBlurCanvasRef.current;
+
+    function renderFrame() {
+      if (!active) return;
+      const video = videoRef.current;
+      const canvas = cinematicCanvasRef.current;
+
+      if (video && canvas) {
+        renderCinematicFrame(video, canvas, subjectCanvas, blurCanvas, cinematicDepth);
+      }
+
+      cinematicRafRef.current = requestAnimationFrame(renderFrame);
+    }
+
+    renderFrame();
+
+    return () => {
+      active = false;
+      if (cinematicRafRef.current !== null) {
+        cancelAnimationFrame(cinematicRafRef.current);
+        cinematicRafRef.current = null;
+      }
+    };
+  }, [cameraOn, cinematicEnabled, cinematicDepth]);
 
   useEffect(() => {
     if (!playing) {
@@ -473,9 +702,11 @@ export function TeleprompterStudio() {
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    processedVideoStreamRef.current?.getTracks().forEach((track) => track.stop());
     if (recordingTimerRef.current !== null) window.clearInterval(recordingTimerRef.current);
     if (recordingUrlRef.current) URL.revokeObjectURL(recordingUrlRef.current);
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    if (cinematicRafRef.current !== null) cancelAnimationFrame(cinematicRafRef.current);
   }, []);
 
   return <div className="teleprompter-shell">
@@ -567,7 +798,31 @@ export function TeleprompterStudio() {
           <button type="button" className={showGuide ? "active" : ""} onClick={() => setShowGuide((value) => !value)}>
             <span>EYE LINE</span><b>{showGuide ? "ON" : "OFF"}</b>
           </button>
+          <button
+            type="button"
+            className={cinematicEnabled ? "active" : ""}
+            style={{ gridColumn: "1 / -1" }}
+            onClick={() => setCinematicEnabled((value) => !value)}
+            disabled={recording}
+          >
+            <span>CINEMATIC LOOK</span><b>{cinematicEnabled ? "ON" : "OFF"}</b>
+          </button>
         </div>
+
+        {cinematicEnabled && <div className="teleprompter-settings">
+          <label>
+            <span><b>CINEMATIC DEPTH</b><output>{cinematicDepth}%</output></span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="2"
+              value={cinematicDepth}
+              disabled={recording}
+              onChange={(event) => setCinematicDepth(Number(event.target.value))}
+            />
+          </label>
+        </div>}
 
         <div className="teleprompter-shortcuts">
           <span>SPACE <b>Play / pause</b></span>
@@ -581,7 +836,9 @@ export function TeleprompterStudio() {
       <div className="teleprompter-toolbar">
         <div className="teleprompter-camera-state">
           <span className={cameraOn ? "live" : ""}><i /> {cameraOn ? "CAMERA LIVE" : "CAMERA OFF"}</span>
-          <small>{facingMode === "user" ? "FRONT CAMERA" : "REAR CAMERA"} · MIC RECORDS WITH VIDEO</small>
+          <small>
+            {facingMode === "user" ? "FRONT CAMERA" : "REAR CAMERA"} · {cinematicEnabled ? "CINEMATIC LOOK" : "STANDARD"} · MIC RECORDS WITH VIDEO
+          </small>
         </div>
 
         <div className="teleprompter-toolbar-actions">
@@ -604,9 +861,19 @@ export function TeleprompterStudio() {
         <video
           ref={videoRef}
           className={`teleprompter-video${mirror ? " mirrored" : ""}`}
+          style={{ opacity: cinematicEnabled && cameraOn ? 0 : 1 }}
           autoPlay
           muted
           playsInline
+        />
+        <canvas
+          ref={cinematicCanvasRef}
+          className={`teleprompter-video${mirror ? " mirrored" : ""}`}
+          style={{
+            opacity: cinematicEnabled && cameraOn ? 1 : 0,
+            pointerEvents: "none",
+          }}
+          aria-hidden="true"
         />
 
         {!cameraOn && <div className="teleprompter-camera-placeholder">
@@ -675,8 +942,15 @@ export function TeleprompterStudio() {
       </div>
 
       <div className="teleprompter-footnote">
-        <span>Recording stays on this device. The teleprompter text is not burned into the video.</span>
-        <span>Best results: place the eye line close to your camera lens.</span>
+        <span>
+          Recording stays on this device. The teleprompter text is not burned into the video.
+          {cinematicEnabled ? " Cinematic Look is rendered into the saved recording." : ""}
+        </span>
+        <span>
+          {cinematicEnabled
+            ? "Cinematic works best with you centered and some distance between you and the background."
+            : "Best results: place the eye line close to your camera lens."}
+        </span>
       </div>
 
       {recordedUrl && <section className="teleprompter-recording-result">
