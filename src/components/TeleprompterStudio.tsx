@@ -234,20 +234,6 @@ export function TeleprompterStudio() {
     processedVideoStreamRef.current = null;
   }
 
-  function ensureCinematicCanvases() {
-    if (!cinematicSubjectCanvasRef.current) {
-      cinematicSubjectCanvasRef.current = document.createElement("canvas");
-    }
-    if (!cinematicBlurCanvasRef.current) {
-      cinematicBlurCanvasRef.current = document.createElement("canvas");
-    }
-
-    return {
-      subjectCanvas: cinematicSubjectCanvasRef.current,
-      blurCanvas: cinematicBlurCanvasRef.current,
-    };
-  }
-
   function discardRecording() {
     if (recordingUrlRef.current) {
       URL.revokeObjectURL(recordingUrlRef.current);
@@ -396,12 +382,21 @@ export function TeleprompterStudio() {
           throw new Error("CINEMATIC_CAPTURE_UNSUPPORTED");
         }
 
-        const { subjectCanvas, blurCanvas } = ensureCinematicCanvases();
+        const sourceVideo = videoRef.current;
+        if (!sourceVideo) throw new Error("CINEMATIC_FRAME_UNAVAILABLE");
+
+        if (!cinematicSubjectCanvasRef.current) {
+          cinematicSubjectCanvasRef.current = document.createElement("canvas");
+        }
+        if (!cinematicBlurCanvasRef.current) {
+          cinematicBlurCanvasRef.current = document.createElement("canvas");
+        }
+
         const rendered = renderCinematicFrame(
-          videoRef.current as HTMLVideoElement,
+          sourceVideo,
           canvas,
-          subjectCanvas,
-          blurCanvas,
+          cinematicSubjectCanvasRef.current,
+          cinematicBlurCanvasRef.current,
           cinematicDepth,
         );
         if (!rendered) throw new Error("CINEMATIC_FRAME_UNAVAILABLE");
@@ -587,7 +582,14 @@ export function TeleprompterStudio() {
     }
 
     let active = true;
-    const { subjectCanvas, blurCanvas } = ensureCinematicCanvases();
+    if (!cinematicSubjectCanvasRef.current) {
+      cinematicSubjectCanvasRef.current = document.createElement("canvas");
+    }
+    if (!cinematicBlurCanvasRef.current) {
+      cinematicBlurCanvasRef.current = document.createElement("canvas");
+    }
+    const subjectCanvas = cinematicSubjectCanvasRef.current;
+    const blurCanvas = cinematicBlurCanvasRef.current;
 
     function renderFrame() {
       if (!active) return;
@@ -799,6 +801,7 @@ export function TeleprompterStudio() {
           <button
             type="button"
             className={cinematicEnabled ? "active" : ""}
+            style={{ gridColumn: "1 / -1" }}
             onClick={() => setCinematicEnabled((value) => !value)}
             disabled={recording}
           >
