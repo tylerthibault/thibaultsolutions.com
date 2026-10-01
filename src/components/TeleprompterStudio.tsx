@@ -55,6 +55,7 @@ export function TeleprompterStudio() {
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [speed, setSpeed] = useState(38);
   const [fontSize, setFontSize] = useState(44);
+  const [eyeLinePosition, setEyeLinePosition] = useState(42);
   const [playing, setPlaying] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
   const [cameraError, setCameraError] = useState("");
@@ -68,6 +69,10 @@ export function TeleprompterStudio() {
   const [recordedUrl, setRecordedUrl] = useState("");
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedMimeType, setRecordedMimeType] = useState("");
+  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+
+  const fullscreenActive = pseudoFullscreen || nativeFullscreen;
 
   function clearRecordingTimer() {
     if (recordingTimerRef.current !== null) {
@@ -165,15 +170,33 @@ export function TeleprompterStudio() {
     const stage = stageRef.current;
     if (!stage) return;
 
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else {
-        await stage.requestFullscreen();
-      }
-    } catch {
-      // Fullscreen is optional; the studio still works without it.
+    if (pseudoFullscreen) {
+      setPseudoFullscreen(false);
+      return;
     }
+
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        setNativeFullscreen(false);
+      }
+      return;
+    }
+
+    const requestFullscreen = stage.requestFullscreen?.bind(stage);
+    if (requestFullscreen) {
+      try {
+        await requestFullscreen();
+        return;
+      } catch {
+        // iOS/WebKit can expose the API but reject element fullscreen.
+      }
+    }
+
+    // Reliable fallback for mobile browsers that do not support arbitrary
+    // element fullscreen. This fills the viewport while keeping prompt overlays.
+    setPseudoFullscreen(true);
   }
 
   async function startRecording() {
@@ -348,6 +371,24 @@ export function TeleprompterStudio() {
   }, [playing, speed]);
 
   useEffect(() => {
+    function onFullscreenChange() {
+      setNativeFullscreen(Boolean(document.fullscreenElement));
+    }
+
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    if (!pseudoFullscreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [pseudoFullscreen]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       const typing = target?.tagName === "TEXTAREA" || target?.tagName === "INPUT";
@@ -435,6 +476,18 @@ export function TeleprompterStudio() {
               onChange={(event) => setFontSize(Number(event.target.value))}
             />
           </label>
+
+          <label>
+            <span><b>EYE LINE POSITION</b><output>{eyeLinePosition}%</output></span>
+            <input
+              type="range"
+              min="20"
+              max="72"
+              step="1"
+              value={eyeLinePosition}
+              onChange={(event) => setEyeLinePosition(Number(event.target.value))}
+            />
+          </label>
         </div>
 
         <div className="teleprompter-toggle-grid">
@@ -465,13 +518,18 @@ export function TeleprompterStudio() {
             {cameraOn ? "STOP CAMERA" : "ENABLE CAMERA"}
           </button>
           <button type="button" disabled={recording} onClick={() => void switchCamera()}>FLIP</button>
-          <button type="button" onClick={() => void toggleFullscreen()}>FULLSCREEN ↗</button>
+          <button type="button" onClick={() => void toggleFullscreen()}>
+            {fullscreenActive ? "EXIT FULLSCREEN" : "FULLSCREEN ↗"}
+          </button>
         </div>
       </div>
 
       {(cameraError || recordingError) && <div className="teleprompter-camera-error">{recordingError || cameraError}</div>}
 
-      <div ref={stageRef} className="teleprompter-stage">
+      <div
+        ref={stageRef}
+        className={`teleprompter-stage${pseudoFullscreen ? " pseudo-fullscreen" : ""}`}
+      >
         <video
           ref={videoRef}
           className={`teleprompter-video${mirror ? " mirrored" : ""}`}
@@ -490,7 +548,18 @@ export function TeleprompterStudio() {
         </div>}
 
         <div className="teleprompter-vignette" aria-hidden="true" />
-        {showGuide && <div className="teleprompter-eye-guide" aria-hidden="true"><span>EYE LINE</span></div>}
+        {showGuide && <div
+          className="teleprompter-eye-guide"
+          style={{ top: `${eyeLinePosition}%` }}
+          aria-hidden="true"
+        ><span>EYE LINE</span></div>}
+
+        {fullscreenActive && <button
+          type="button"
+          className="teleprompter-fullscreen-exit"
+          onClick={() => void toggleFullscreen()}
+          aria-label="Exit fullscreen"
+        >×</button>}
 
         {recording && <div className="teleprompter-recording-badge">
           <i />
@@ -503,7 +572,7 @@ export function TeleprompterStudio() {
           className="teleprompter-prompt"
           style={{ fontSize: `${fontSize}px` }}
         >
-          <div className="teleprompter-prompt-spacer" />
+          <div className="teleprompter-prompt-spacer" style={{ height: `${eyeLinePosition}%` }} />
           <div className="teleprompter-copy">{script || "Paste a script in the editor to begin."}</div>
           <div className="teleprompter-prompt-spacer end" />
         </div>
