@@ -2,11 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const TELEPROMPTER_SETTINGS_KEY = "creative-circle:teleprompter-settings:v1";
+
+type TeleprompterSettings = {
+  speed: number;
+  fontSize: number;
+  eyeLinePosition: number;
+  facingMode: "user" | "environment";
+  mirror: boolean;
+  showGuide: boolean;
+  showControls: boolean;
+};
+
 const DEFAULT_SCRIPT = `Paste your script here.
 
 The teleprompter will scroll over your live camera preview so you can keep your eyes close to the lens while you read.
 
 Adjust the speed and text size until the pacing feels natural, then press Start.`;
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+}
 
 function formatDuration(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -71,6 +88,7 @@ export function TeleprompterStudio() {
   const [recordedMimeType, setRecordedMimeType] = useState("");
   const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const fullscreenActive = pseudoFullscreen || nativeFullscreen;
 
@@ -326,6 +344,48 @@ export function TeleprompterStudio() {
   }
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(TELEPROMPTER_SETTINGS_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as Partial<TeleprompterSettings>;
+        setSpeed(clampNumber(saved.speed, 10, 110, 38));
+        setFontSize(clampNumber(saved.fontSize, 26, 76, 44));
+        setEyeLinePosition(clampNumber(saved.eyeLinePosition, 20, 72, 42));
+        if (saved.facingMode === "user" || saved.facingMode === "environment") {
+          setFacingMode(saved.facingMode);
+        }
+        if (typeof saved.mirror === "boolean") setMirror(saved.mirror);
+        if (typeof saved.showGuide === "boolean") setShowGuide(saved.showGuide);
+        if (typeof saved.showControls === "boolean") setShowControls(saved.showControls);
+      }
+    } catch {
+      // Corrupt or unavailable local storage should never block the teleprompter.
+    } finally {
+      setSettingsLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!settingsLoaded) return;
+
+    const settings: TeleprompterSettings = {
+      speed,
+      fontSize,
+      eyeLinePosition,
+      facingMode,
+      mirror,
+      showGuide,
+      showControls,
+    };
+
+    try {
+      window.localStorage.setItem(TELEPROMPTER_SETTINGS_KEY, JSON.stringify(settings));
+    } catch {
+      // Private browsing/storage restrictions can disable localStorage.
+    }
+  }, [settingsLoaded, speed, fontSize, eyeLinePosition, facingMode, mirror, showGuide, showControls]);
+
+  useEffect(() => {
     if (!playing) {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -512,6 +572,7 @@ export function TeleprompterStudio() {
         <div className="teleprompter-shortcuts">
           <span>SPACE <b>Play / pause</b></span>
           <span>R <b>Restart</b></span>
+          <span>LOCAL <b>Settings saved on this device</b></span>
         </div>
       </>}
     </aside>
