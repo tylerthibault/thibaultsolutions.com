@@ -58,15 +58,22 @@ function describeKeyboardBinding(binding: string) {
   return key && key !== "Unidentified" ? key : code || "Remote button";
 }
 
-function isCommonRemoteKey(event: KeyboardEvent) {
-  const commonKeys = new Set([
+function isSupportedRemoteKey(event: KeyboardEvent) {
+  const supportedKeys = new Set([
+    "Enter",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "ArrowDown",
+    "PageUp",
+    "PageDown",
     "MediaPlayPause",
     "AudioVolumeUp",
     "AudioVolumeDown",
     "VolumeUp",
     "VolumeDown",
   ]);
-  return commonKeys.has(event.key) || commonKeys.has(event.code);
+  return supportedKeys.has(event.key) || supportedKeys.has(event.code);
 }
 
 const DEFAULT_SCRIPT = `Paste your script here.
@@ -129,6 +136,7 @@ export function TeleprompterStudio() {
   const scriptRef = useRef(DEFAULT_SCRIPT);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const voiceRestartTimerRef = useRef<number | null>(null);
+  const remoteLearnTimerRef = useRef<number | null>(null);
 
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [speed, setSpeed] = useState(38);
@@ -160,6 +168,7 @@ export function TeleprompterStudio() {
   const [remoteBinding, setRemoteBinding] = useState("");
   const [remoteLearning, setRemoteLearning] = useState(false);
   const [remoteLastInput, setRemoteLastInput] = useState("");
+  const [remoteDiagnostic, setRemoteDiagnostic] = useState("");
 
   const fullscreenActive = pseudoFullscreen || nativeFullscreen;
 
@@ -662,6 +671,32 @@ export function TeleprompterStudio() {
   }, [handleVoiceCommand, voiceControlEnabled]);
 
   useEffect(() => {
+    if (!remoteLearning) {
+      if (remoteLearnTimerRef.current !== null) {
+        window.clearTimeout(remoteLearnTimerRef.current);
+        remoteLearnTimerRef.current = null;
+      }
+      return;
+    }
+
+    setRemoteDiagnostic("Waiting for browser input… press the remote button now.");
+    remoteLearnTimerRef.current = window.setTimeout(() => {
+      setRemoteLearning(false);
+      setRemoteDiagnostic(
+        "No browser input detected. If your phone volume changed, this remote is sending a system shutter/volume command that the web teleprompter cannot read. Try a Bluetooth keyboard/page-turner remote instead.",
+      );
+      remoteLearnTimerRef.current = null;
+    }, 6000);
+
+    return () => {
+      if (remoteLearnTimerRef.current !== null) {
+        window.clearTimeout(remoteLearnTimerRef.current);
+        remoteLearnTimerRef.current = null;
+      }
+    };
+  }, [remoteLearning]);
+
+  useEffect(() => {
     if (!playing) {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -731,16 +766,21 @@ export function TeleprompterStudio() {
       if (remoteLearning) {
         if (["Shift", "Control", "Alt", "Meta"].includes(event.key)) return;
         event.preventDefault();
+        if (remoteLearnTimerRef.current !== null) {
+          window.clearTimeout(remoteLearnTimerRef.current);
+          remoteLearnTimerRef.current = null;
+        }
         const binding = keyboardBinding(event);
+        const label = describeKeyboardBinding(binding);
         setRemoteBinding(binding);
-        setRemoteLastInput(describeKeyboardBinding(binding));
+        setRemoteLastInput(label);
+        setRemoteDiagnostic(`Compatible input detected: ${label}. This button is now mapped to start/pause.`);
         setRemoteLearning(false);
         return;
       }
 
       const learnedRemotePressed = Boolean(remoteBinding) && keyboardBinding(event) === remoteBinding;
-      const commonRemotePressed = isCommonRemoteKey(event);
-      if (learnedRemotePressed || commonRemotePressed) {
+      if (learnedRemotePressed) {
         event.preventDefault();
         setRemoteLastInput(describeKeyboardBinding(keyboardBinding(event)));
         togglePlayback();
@@ -750,8 +790,9 @@ export function TeleprompterStudio() {
       const interactive = target?.closest("textarea,input,select,button,a,[contenteditable='true']");
       if (interactive) return;
 
-      if (event.code === "Space") {
+      if (event.code === "Space" || isSupportedRemoteKey(event)) {
         event.preventDefault();
+        setRemoteLastInput(describeKeyboardBinding(keyboardBinding(event)));
         togglePlayback();
         return;
       }
@@ -777,6 +818,7 @@ export function TeleprompterStudio() {
     if (recordingTimerRef.current !== null) window.clearInterval(recordingTimerRef.current);
     if (countdownTimerRef.current !== null) window.clearInterval(countdownTimerRef.current);
     if (voiceRestartTimerRef.current !== null) window.clearTimeout(voiceRestartTimerRef.current);
+    if (remoteLearnTimerRef.current !== null) window.clearTimeout(remoteLearnTimerRef.current);
     try {
       recognitionRef.current?.abort();
     } catch {
@@ -912,12 +954,18 @@ export function TeleprompterStudio() {
               type="button"
               className={remoteLearning ? "active" : ""}
               onClick={() => {
+                if (remoteLearning) {
+                  setRemoteLearning(false);
+                  setRemoteDiagnostic("Remote test cancelled.");
+                  return;
+                }
                 setRemoteLastInput("");
-                setRemoteLearning((value) => !value);
+                setRemoteDiagnostic("");
+                setRemoteLearning(true);
               }}
             >
-              <span>BLUETOOTH REMOTE</span>
-              <b>{remoteLearning ? "PRESS BUTTON" : remoteBinding ? "MAPPED" : "LEARN"}</b>
+              <span>REMOTE TEST</span>
+              <b>{remoteLearning ? "PRESS BUTTON" : remoteBinding ? "MAPPED" : "TEST / LEARN"}</b>
             </button>
           </div>
 
@@ -927,11 +975,9 @@ export function TeleprompterStudio() {
               : "Voice commands are not available in this browser.")}
           </p>
           <p>
-            {remoteLastInput
-              ? `Remote input detected: ${remoteLastInput}`
-              : remoteBinding
-                ? `Remote mapped to: ${describeKeyboardBinding(remoteBinding)}`
-                : "Tap Learn, then press the button on your remote once. Space and common media/volume keys also work automatically when the browser exposes them."}
+            {remoteDiagnostic || (remoteBinding
+              ? `Remote mapped to: ${describeKeyboardBinding(remoteBinding)}`
+              : "Tap Test / Learn, then press the remote once. Compatible keyboard-style inputs include Space, Enter, arrow keys, Page Up/Down, and media keys when the browser exposes them.")}
           </p>
           {remoteBinding && <button
             type="button"
@@ -939,6 +985,8 @@ export function TeleprompterStudio() {
             onClick={() => {
               setRemoteBinding("");
               setRemoteLastInput("");
+              setRemoteDiagnostic("");
+              setRemoteLearning(false);
             }}
           >
             CLEAR REMOTE MAPPING
