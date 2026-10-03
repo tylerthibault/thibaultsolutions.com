@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const TELEPROMPTER_SETTINGS_KEY = "creative-circle:teleprompter-settings:v1";
 
@@ -12,7 +12,62 @@ type TeleprompterSettings = {
   mirror: boolean;
   showGuide: boolean;
   showControls: boolean;
+  countdownSeconds: number;
+  remoteBinding: string;
 };
+
+type BrowserSpeechRecognitionEvent = Event & {
+  resultIndex?: number;
+  results: ArrayLike<ArrayLike<{ transcript?: string }>>;
+};
+
+type BrowserSpeechRecognitionErrorEvent = Event & {
+  error?: string;
+};
+
+type BrowserSpeechRecognition = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
+function getSpeechRecognitionConstructor(): BrowserSpeechRecognitionConstructor | null {
+  if (typeof window === "undefined") return null;
+  const speechWindow = window as Window & {
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  };
+  return speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition || null;
+}
+
+function keyboardBinding(event: KeyboardEvent) {
+  return `${event.code || "Unidentified"}::${event.key || "Unidentified"}`;
+}
+
+function describeKeyboardBinding(binding: string) {
+  const [code, key] = binding.split("::");
+  return key && key !== "Unidentified" ? key : code || "Remote button";
+}
+
+function isCommonRemoteKey(event: KeyboardEvent) {
+  const commonKeys = new Set([
+    "MediaPlayPause",
+    "AudioVolumeUp",
+    "AudioVolumeDown",
+    "VolumeUp",
+    "VolumeDown",
+  ]);
+  return commonKeys.has(event.key) || commonKeys.has(event.code);
+}
 
 const DEFAULT_SCRIPT = `Paste your script here.
 
@@ -68,6 +123,12 @@ export function TeleprompterStudio() {
   const rafRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
   const scrollPositionRef = useRef(0);
+  const countdownTimerRef = useRef<number | null>(null);
+  const countdownSecondsRef = useRef(3);
+  const playingRef = useRef(false);
+  const scriptRef = useRef(DEFAULT_SCRIPT);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const voiceRestartTimerRef = useRef<number | null>(null);
 
   const [script, setScript] = useState(DEFAULT_SCRIPT);
   const [speed, setSpeed] = useState(38);
@@ -90,6 +151,15 @@ export function TeleprompterStudio() {
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [fullscreenInstallHint, setFullscreenInstallHint] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState(3);
+  const [countdownValue, setCountdownValue] = useState<number | null>(null);
+  const [voiceControlAvailable, setVoiceControlAvailable] = useState(false);
+  const [voiceControlEnabled, setVoiceControlEnabled] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
+  const [remoteBinding, setRemoteBinding] = useState("");
+  const [remoteLearning, setRemoteLearning] = useState(false);
+  const [remoteLastInput, setRemoteLastInput] = useState("");
 
   const fullscreenActive = pseudoFullscreen || nativeFullscreen;
 
@@ -169,21 +239,112 @@ export function TeleprompterStudio() {
     if (cameraOn) await startCamera(next);
   }
 
-  function resetPrompt() {
+  const setPlayback = useCallback((value: boolean) => {
+    playingRef.current = value;
+    setPlaying(value);
+  }, []);
+
+  const cancelCountdown = useCallback(() => {
+    if (countdownTimerRef.current !== null) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setCountdownValue(null);
+  }, []);
+
+  const resetPrompt = useCallback(() => {
+    cancelCountdown();
     const prompt = promptRef.current;
     scrollPositionRef.current = 0;
     if (prompt) prompt.scrollTop = 0;
-    setPlaying(false);
+    setPlayback(false);
     lastFrameRef.current = null;
-  }
+  }, [cancelCountdown, setPlayback]);
 
-  function togglePlayback() {
-    if (!script.trim()) return;
+  const startPlayback = useCallback((restart = false, skipCountdown = false) => {
+    if (!scriptRef.current.trim()) return;
+
+    cancelCountdown();
     const prompt = promptRef.current;
-    if (!playing && prompt) scrollPositionRef.current = prompt.scrollTop;
-    setPlaying((value) => !value);
+    if (restart) {
+      scrollPositionRef.current = 0;
+      if (prompt) prompt.scrollTop = 0;
+    } else if (prompt) {
+      scrollPositionRef.current = prompt.scrollTop;
+    }
+
+    setPlayback(false);
     lastFrameRef.current = null;
-  }
+
+    const delay = skipCountdown ? 0 : countdownSecondsRef.current;
+    if (delay <= 0) {
+      setPlayback(true);
+      return;
+    }
+
+    let remaining = delay;
+    setCountdownValue(remaining);
+    countdownTimerRef.current = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        cancelCountdown();
+        setPlayback(true);
+        lastFrameRef.current = null;
+        return;
+      }
+      setCountdownValue(remaining);
+    }, 1000);
+  }, [cancelCountdown, setPlayback]);
+
+  const pausePlayback = useCallback(() => {
+    cancelCountdown();
+    setPlayback(false);
+    lastFrameRef.current = null;
+  }, [cancelCountdown, setPlayback]);
+
+  const togglePlayback = useCallback(() => {
+    if (countdownTimerRef.current !== null) {
+      cancelCountdown();
+      return;
+    }
+    if (playingRef.current) {
+      pausePlayback();
+      return;
+    }
+    startPlayback(false, false);
+  }, [cancelCountdown, pausePlayback, startPlayback]);
+
+  const resumePlayback = useCallback(() => {
+    if (!playingRef.current) startPlayback(false, true);
+  }, [startPlayback]);
+
+  const restartPlayback = useCallback(() => {
+    startPlayback(true, false);
+  }, [startPlayback]);
+
+  const handleVoiceCommand = useCallback((rawTranscript: string) => {
+    const transcript = rawTranscript
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (transcript.includes("prompter restart")) {
+      restartPlayback();
+      return;
+    }
+    if (transcript.includes("prompter resume")) {
+      resumePlayback();
+      return;
+    }
+    if (transcript.includes("prompter stop")) {
+      pausePlayback();
+      return;
+    }
+    if (transcript.includes("prompter start")) {
+      startPlayback(false, false);
+    }
+  }, [pausePlayback, restartPlayback, resumePlayback, startPlayback]);
 
   async function toggleFullscreen() {
     const stage = stageRef.current;
@@ -368,6 +529,8 @@ export function TeleprompterStudio() {
         if (typeof saved.mirror === "boolean") setMirror(saved.mirror);
         if (typeof saved.showGuide === "boolean") setShowGuide(saved.showGuide);
         if (typeof saved.showControls === "boolean") setShowControls(saved.showControls);
+        setCountdownSeconds(clampNumber(saved.countdownSeconds, 0, 10, 3));
+        if (typeof saved.remoteBinding === "string") setRemoteBinding(saved.remoteBinding);
       }
     } catch {
       // Corrupt or unavailable local storage should never block the teleprompter.
@@ -387,6 +550,8 @@ export function TeleprompterStudio() {
       mirror,
       showGuide,
       showControls,
+      countdownSeconds,
+      remoteBinding,
     };
 
     try {
@@ -394,7 +559,107 @@ export function TeleprompterStudio() {
     } catch {
       // Private browsing/storage restrictions can disable localStorage.
     }
-  }, [settingsLoaded, speed, fontSize, eyeLinePosition, facingMode, mirror, showGuide, showControls]);
+  }, [settingsLoaded, speed, fontSize, eyeLinePosition, facingMode, mirror, showGuide, showControls, countdownSeconds, remoteBinding]);
+
+  useEffect(() => {
+    scriptRef.current = script;
+  }, [script]);
+
+  useEffect(() => {
+    countdownSecondsRef.current = countdownSeconds;
+  }, [countdownSeconds]);
+
+  useEffect(() => {
+    setVoiceControlAvailable(Boolean(getSpeechRecognitionConstructor()));
+  }, []);
+
+  useEffect(() => {
+    if (!voiceControlEnabled) {
+      setVoiceListening(false);
+      return;
+    }
+
+    const Recognition = getSpeechRecognitionConstructor();
+    if (!Recognition) {
+      setVoiceControlAvailable(false);
+      setVoiceControlEnabled(false);
+      setVoiceError("Voice control is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new Recognition();
+    let active = true;
+
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognitionRef.current = recognition;
+
+    const startListening = () => {
+      if (!active) return;
+      try {
+        recognition.start();
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "InvalidStateError") return;
+        setVoiceError("Voice control could not start. Check microphone permission and try again.");
+      }
+    };
+
+    recognition.onstart = () => {
+      if (!active) return;
+      setVoiceListening(true);
+      setVoiceError("");
+    };
+
+    recognition.onresult = (event) => {
+      const startIndex = event.resultIndex ?? 0;
+      for (let index = startIndex; index < event.results.length; index += 1) {
+        const transcript = event.results[index]?.[0]?.transcript;
+        if (transcript) handleVoiceCommand(transcript);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (!active) return;
+      setVoiceListening(false);
+      const errorCode = event.error || "";
+      if (errorCode === "not-allowed" || errorCode === "service-not-allowed") {
+        setVoiceError("Microphone permission is required for voice control.");
+        setVoiceControlEnabled(false);
+        return;
+      }
+      if (errorCode && errorCode !== "no-speech" && errorCode !== "aborted") {
+        setVoiceError(`Voice control paused (${errorCode}).`);
+      }
+    };
+
+    recognition.onend = () => {
+      if (!active) return;
+      setVoiceListening(false);
+      voiceRestartTimerRef.current = window.setTimeout(startListening, 350);
+    };
+
+    startListening();
+
+    return () => {
+      active = false;
+      if (voiceRestartTimerRef.current !== null) {
+        window.clearTimeout(voiceRestartTimerRef.current);
+        voiceRestartTimerRef.current = null;
+      }
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      try {
+        recognition.abort();
+      } catch {
+        // Recognition can already be stopped by the browser.
+      }
+      if (recognitionRef.current === recognition) recognitionRef.current = null;
+      setVoiceListening(false);
+    };
+  }, [handleVoiceCommand, voiceControlEnabled]);
 
   useEffect(() => {
     if (!playing) {
@@ -462,19 +727,37 @@ export function TeleprompterStudio() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      const typing = target?.tagName === "TEXTAREA" || target?.tagName === "INPUT";
-      if (typing) return;
 
-      if (event.code === "Space") {
+      if (remoteLearning) {
+        if (["Shift", "Control", "Alt", "Meta"].includes(event.key)) return;
         event.preventDefault();
-        togglePlayback();
+        const binding = keyboardBinding(event);
+        setRemoteBinding(binding);
+        setRemoteLastInput(describeKeyboardBinding(binding));
+        setRemoteLearning(false);
+        return;
       }
-      if (event.key.toLowerCase() === "r" && !recording) resetPrompt();
+
+      const interactive = target?.closest("textarea,input,select,button,a,[contenteditable='true']");
+      if (interactive) return;
+
+      const learnedRemotePressed = Boolean(remoteBinding) && keyboardBinding(event) === remoteBinding;
+      if (event.code === "Space" || learnedRemotePressed || isCommonRemoteKey(event)) {
+        event.preventDefault();
+        setRemoteLastInput(describeKeyboardBinding(keyboardBinding(event)));
+        togglePlayback();
+        return;
+      }
+
+      if (event.key.toLowerCase() === "r" && !recording) {
+        event.preventDefault();
+        restartPlayback();
+      }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  });
+  }, [recording, remoteBinding, remoteLearning, restartPlayback, togglePlayback]);
 
   useEffect(() => () => {
     const recorder = recorderRef.current;
@@ -485,6 +768,13 @@ export function TeleprompterStudio() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     micStreamRef.current?.getTracks().forEach((track) => track.stop());
     if (recordingTimerRef.current !== null) window.clearInterval(recordingTimerRef.current);
+    if (countdownTimerRef.current !== null) window.clearInterval(countdownTimerRef.current);
+    if (voiceRestartTimerRef.current !== null) window.clearTimeout(voiceRestartTimerRef.current);
+    try {
+      recognitionRef.current?.abort();
+    } catch {
+      // Recognition can already be stopped by the browser.
+    }
     if (recordingUrlRef.current) URL.revokeObjectURL(recordingUrlRef.current);
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
   }, []);
@@ -569,6 +859,18 @@ export function TeleprompterStudio() {
               onChange={(event) => setEyeLinePosition(Number(event.target.value))}
             />
           </label>
+
+          <label>
+            <span><b>START COUNTDOWN</b><output>{countdownSeconds === 0 ? "OFF" : `${countdownSeconds}s`}</output></span>
+            <input
+              type="range"
+              min="0"
+              max="10"
+              step="1"
+              value={countdownSeconds}
+              onChange={(event) => setCountdownSeconds(Number(event.target.value))}
+            />
+          </label>
         </div>
 
         <div className="teleprompter-toggle-grid">
@@ -580,9 +882,65 @@ export function TeleprompterStudio() {
           </button>
         </div>
 
+        <div className="teleprompter-handsfree">
+          <div className="teleprompter-handsfree-title">
+            <span>HANDS-FREE</span>
+            <small>Start, stop, resume, or restart without touching the screen.</small>
+          </div>
+
+          <div className="teleprompter-toggle-grid">
+            <button
+              type="button"
+              className={voiceControlEnabled ? "active" : ""}
+              disabled={!voiceControlAvailable}
+              onClick={() => {
+                setVoiceError("");
+                setVoiceControlEnabled((value) => !value);
+              }}
+            >
+              <span>VOICE CONTROL</span>
+              <b>{!voiceControlAvailable ? "UNAVAILABLE" : voiceListening ? "LISTENING" : voiceControlEnabled ? "STARTING" : "OFF"}</b>
+            </button>
+            <button
+              type="button"
+              className={remoteLearning ? "active" : ""}
+              onClick={() => {
+                setRemoteLastInput("");
+                setRemoteLearning((value) => !value);
+              }}
+            >
+              <span>BLUETOOTH REMOTE</span>
+              <b>{remoteLearning ? "PRESS BUTTON" : remoteBinding ? "MAPPED" : "LEARN"}</b>
+            </button>
+          </div>
+
+          <p>
+            {voiceError || (voiceControlAvailable
+              ? "Voice: “Prompter start”, “Prompter stop”, “Prompter resume”, or “Prompter restart”."
+              : "Voice commands are not available in this browser.")}
+          </p>
+          <p>
+            {remoteLastInput
+              ? `Remote input detected: ${remoteLastInput}`
+              : remoteBinding
+                ? `Remote mapped to: ${describeKeyboardBinding(remoteBinding)}`
+                : "Tap Learn, then press the button on your remote once. Space and common media/volume keys also work automatically when the browser exposes them."}
+          </p>
+          {remoteBinding && <button
+            type="button"
+            className="teleprompter-clear-remote"
+            onClick={() => {
+              setRemoteBinding("");
+              setRemoteLastInput("");
+            }}
+          >
+            CLEAR REMOTE MAPPING
+          </button>}
+        </div>
+
         <div className="teleprompter-shortcuts">
-          <span>SPACE <b>Play / pause</b></span>
-          <span>R <b>Restart</b></span>
+          <span>SPACE <b>Start / pause</b></span>
+          <span>R <b>Restart + countdown</b></span>
           <span>LOCAL <b>Settings saved on this device</b></span>
         </div>
       </>}
@@ -655,6 +1013,12 @@ export function TeleprompterStudio() {
           <strong>{formatDuration(recordingSeconds)}</strong>
         </div>}
 
+        {countdownValue !== null && <div className="teleprompter-countdown" aria-live="assertive">
+          <span>STARTING IN</span>
+          <strong>{countdownValue}</strong>
+          <small>Press again or say “Prompter stop” to cancel</small>
+        </div>}
+
         <div
           ref={promptRef}
           className="teleprompter-prompt"
@@ -669,12 +1033,12 @@ export function TeleprompterStudio() {
           <button type="button" className="teleprompter-reset" onClick={resetPrompt}>↺</button>
           <button
             type="button"
-            className={`teleprompter-play${playing ? " playing" : ""}`}
+            className={`teleprompter-play${playing || countdownValue !== null ? " playing" : ""}`}
             onClick={togglePlayback}
             disabled={!script.trim()}
           >
-            <span>{playing ? "Ⅱ" : "▶"}</span>
-            {playing ? "PAUSE" : "START"}
+            <span>{countdownValue !== null ? "×" : playing ? "Ⅱ" : "▶"}</span>
+            {countdownValue !== null ? "CANCEL" : playing ? "PAUSE" : "START"}
           </button>
           <button
             type="button"
