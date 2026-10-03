@@ -738,13 +738,20 @@ export function TeleprompterStudio() {
         return;
       }
 
+      const learnedRemotePressed = Boolean(remoteBinding) && keyboardBinding(event) === remoteBinding;
+      const commonRemotePressed = isCommonRemoteKey(event);
+      if (learnedRemotePressed || commonRemotePressed) {
+        event.preventDefault();
+        setRemoteLastInput(describeKeyboardBinding(keyboardBinding(event)));
+        togglePlayback();
+        return;
+      }
+
       const interactive = target?.closest("textarea,input,select,button,a,[contenteditable='true']");
       if (interactive) return;
 
-      const learnedRemotePressed = Boolean(remoteBinding) && keyboardBinding(event) === remoteBinding;
-      if (event.code === "Space" || learnedRemotePressed || isCommonRemoteKey(event)) {
+      if (event.code === "Space") {
         event.preventDefault();
-        setRemoteLastInput(describeKeyboardBinding(keyboardBinding(event)));
         togglePlayback();
         return;
       }
