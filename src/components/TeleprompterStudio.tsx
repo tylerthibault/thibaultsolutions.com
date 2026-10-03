@@ -975,9 +975,11 @@ export function TeleprompterStudio() {
               : "Voice commands are not available in this browser.")}
           </p>
           <p>
-            {remoteDiagnostic || (remoteBinding
-              ? `Remote mapped to: ${describeKeyboardBinding(remoteBinding)}`
-              : "Tap Test / Learn, then press the remote once. Compatible keyboard-style inputs include Space, Enter, arrow keys, Page Up/Down, and media keys when the browser exposes them.")}
+            {remoteDiagnostic || (remoteLastInput
+              ? `Last browser input: ${remoteLastInput}`
+              : remoteBinding
+                ? `Remote mapped to: ${describeKeyboardBinding(remoteBinding)}`
+                : "Tap Test / Learn, then press the remote once. Compatible keyboard-style inputs include Space, Enter, arrow keys, Page Up/Down, and media keys when the browser exposes them.")}
           </p>
           {remoteBinding && <button
             type="button"
