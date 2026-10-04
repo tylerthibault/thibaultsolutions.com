@@ -22,7 +22,10 @@ export function LoginForm({ nextPath = "/creative-circle" }: { nextPath?: string
 
     setBusy(false);
     if (result.error) {
-      setError(result.error.message ?? "Sign in failed");
+      const message = result.error.message ?? "Sign in failed";
+      setError(message.toLowerCase().includes("invalid origin")
+        ? `${message} — ${window.location.origin}`
+        : message);
       return;
     }
     router.push(nextPath);
