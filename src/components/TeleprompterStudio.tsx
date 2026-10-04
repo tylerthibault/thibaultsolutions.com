@@ -122,6 +122,9 @@ export function TeleprompterStudio() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const recordingCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const recordingCanvasStreamRef = useRef<MediaStream | null>(null);
+  const recordingFrameRef = useRef<number | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingUrlRef = useRef<string | null>(null);
@@ -185,6 +188,69 @@ export function TeleprompterStudio() {
     micStreamRef.current = null;
   }
 
+  function stopRecordingVideoPump() {
+    if (recordingFrameRef.current !== null) {
+      cancelAnimationFrame(recordingFrameRef.current);
+      recordingFrameRef.current = null;
+    }
+    recordingCanvasStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingCanvasStreamRef.current = null;
+    recordingCanvasRef.current = null;
+  }
+
+  async function createStableRecordingVideoStream(cameraStream: MediaStream) {
+    const video = videoRef.current;
+    if (!video) return new MediaStream(cameraStream.getVideoTracks());
+
+    if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth || !video.videoHeight) {
+      await new Promise<void>((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          video.removeEventListener("loadeddata", finish);
+          video.removeEventListener("canplay", finish);
+          resolve();
+        };
+        video.addEventListener("loadeddata", finish, { once: true });
+        video.addEventListener("canplay", finish, { once: true });
+        window.setTimeout(finish, 800);
+      });
+    }
+
+    const sourceWidth = video.videoWidth;
+    const sourceHeight = video.videoHeight;
+    if (!sourceWidth || !sourceHeight) return new MediaStream(cameraStream.getVideoTracks());
+
+    const canvas = document.createElement("canvas");
+    const longestEdge = 1280;
+    const scale = Math.min(1, longestEdge / Math.max(sourceWidth, sourceHeight));
+    canvas.width = Math.max(2, Math.round((sourceWidth * scale) / 2) * 2);
+    canvas.height = Math.max(2, Math.round((sourceHeight * scale) / 2) * 2);
+
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context || typeof canvas.captureStream !== "function") {
+      return new MediaStream(cameraStream.getVideoTracks());
+    }
+
+    stopRecordingVideoPump();
+    recordingCanvasRef.current = canvas;
+
+    const drawFrame = () => {
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
+      recordingFrameRef.current = requestAnimationFrame(drawFrame);
+    };
+    drawFrame();
+
+    const stream = canvas.captureStream(30);
+    const track = stream.getVideoTracks()[0];
+    if (track && "contentHint" in track) track.contentHint = "motion";
+    recordingCanvasStreamRef.current = stream;
+    return stream;
+  }
+
   function discardRecording() {
     if (recordingUrlRef.current) {
       URL.revokeObjectURL(recordingUrlRef.current);
@@ -218,8 +284,9 @@ export function TeleprompterStudio() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: nextFacingMode },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30, max: 30 },
         },
         audio: false,
       });
@@ -424,8 +491,13 @@ export function TeleprompterStudio() {
       });
       micStreamRef.current = micStream;
 
+      // Record a composited camera frame instead of handing MediaRecorder the
+      // raw mobile camera track. Current iOS/WebKit builds can expose the raw
+      // sensor buffer with unstable orientation/encoding; drawing the displayed
+      // frame to a fixed canvas makes the recorded geometry and frame stream stable.
+      const stableVideoStream = await createStableRecordingVideoStream(cameraStream);
       const recordingStream = new MediaStream([
-        ...cameraStream.getVideoTracks(),
+        ...stableVideoStream.getVideoTracks(),
         ...micStream.getAudioTracks(),
       ]);
 
@@ -451,6 +523,7 @@ export function TeleprompterStudio() {
 
         clearRecordingTimer();
         stopMic();
+        stopRecordingVideoPump();
         setRecording(false);
         recorderRef.current = null;
 
@@ -475,10 +548,13 @@ export function TeleprompterStudio() {
         if (startedAt) setRecordingSeconds(Math.floor((Date.now() - startedAt) / 1000));
       }, 250);
 
-      recorder.start(500);
+      // A single continuous recording avoids Safari/WebKit chunk-boundary
+      // regressions seen with short MediaRecorder timeslices.
+      recorder.start();
       setRecording(true);
     } catch (error) {
       stopMic();
+      stopRecordingVideoPump();
       clearRecordingTimer();
       const message = error instanceof DOMException && error.name === "NotAllowedError"
         ? "Microphone permission was denied. Allow microphone access to record video with audio."
@@ -815,6 +891,10 @@ export function TeleprompterStudio() {
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     micStreamRef.current?.getTracks().forEach((track) => track.stop());
+    if (recordingFrameRef.current !== null) cancelAnimationFrame(recordingFrameRef.current);
+    recordingCanvasStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingCanvasStreamRef.current = null;
+    recordingCanvasRef.current = null;
     if (recordingTimerRef.current !== null) window.clearInterval(recordingTimerRef.current);
     if (countdownTimerRef.current !== null) window.clearInterval(countdownTimerRef.current);
     if (voiceRestartTimerRef.current !== null) window.clearTimeout(voiceRestartTimerRef.current);
