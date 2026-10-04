@@ -9,9 +9,20 @@ import { schema, user as users } from "./schema";
 
 export type CreativeCircleSection = "lab" | "feedback";
 
+function isAllowedCreativeCircleOrigin(value: string) {
+  try {
+    const origin = new URL(value);
+    if (origin.protocol !== "https:" && origin.protocol !== "http:") return false;
+    const host = origin.hostname.toLowerCase();
+    return host === "thibaultsolutions.com" || host.endsWith(".thibaultsolutions.com");
+  } catch {
+    return false;
+  }
+}
+
 export function createAuth(disableSignUp = true) {
   const configuredOrigin = process.env.APP_URL?.trim().replace(/\/+$/, "");
-  const trustedOrigins = Array.from(new Set([
+  const defaultTrustedOrigins = Array.from(new Set([
     configuredOrigin,
     "https://thibaultsolutions.com",
     "https://www.thibaultsolutions.com",
@@ -20,7 +31,16 @@ export function createAuth(disableSignUp = true) {
   return betterAuth({
     appName: "Creative Circle",
     baseURL: configuredOrigin,
-    trustedOrigins,
+    trustedOrigins: async (request) => {
+      const origins = [...defaultTrustedOrigins];
+      const requestOrigin = request?.headers.get("origin");
+
+      if (requestOrigin && isAllowedCreativeCircleOrigin(requestOrigin)) {
+        origins.push(new URL(requestOrigin).origin);
+      }
+
+      return Array.from(new Set(origins));
+    },
     secret: process.env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, { provider: "pg", schema }),
     emailAndPassword: { enabled: true, disableSignUp, minPasswordLength: 12 },
