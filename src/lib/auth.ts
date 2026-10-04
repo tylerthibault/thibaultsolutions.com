@@ -10,9 +10,17 @@ import { schema, user as users } from "./schema";
 export type CreativeCircleSection = "lab" | "feedback";
 
 export function createAuth(disableSignUp = true) {
+  const configuredOrigin = process.env.APP_URL?.trim().replace(/\/+$/, "");
+  const trustedOrigins = Array.from(new Set([
+    configuredOrigin,
+    "https://thibaultsolutions.com",
+    "https://www.thibaultsolutions.com",
+  ].filter((origin): origin is string => Boolean(origin))));
+
   return betterAuth({
     appName: "Creative Circle",
-    baseURL: process.env.APP_URL,
+    baseURL: configuredOrigin,
+    trustedOrigins,
     secret: process.env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(db, { provider: "pg", schema }),
     emailAndPassword: { enabled: true, disableSignUp, minPasswordLength: 12 },
