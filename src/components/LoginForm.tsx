@@ -1,10 +1,8 @@
 "use client";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { authClient } from "@/src/lib/auth-client";
 
 export function LoginForm({ nextPath = "/creative-circle" }: { nextPath?: string }) {
-  const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,16 +18,19 @@ export function LoginForm({ nextPath = "/creative-circle" }: { nextPath?: string
       ? await authClient.signIn.email({ email: value.toLowerCase(), password })
       : await authClient.signIn.username({ username: value, password });
 
-    setBusy(false);
     if (result.error) {
+      setBusy(false);
       const message = result.error.message ?? "Sign in failed";
       setError(message.toLowerCase().includes("invalid origin")
         ? `${message} — ${window.location.origin}`
         : message);
       return;
     }
-    router.push(nextPath);
-    router.refresh();
+
+    // Use a full document navigation after auth. This avoids stale App Router
+    // state on mobile browsers and guarantees the server sees the newly-set
+    // session cookie on the next request.
+    window.location.assign(nextPath);
   }
 
   return <form className="form-stack" onSubmit={submit}>
