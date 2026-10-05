@@ -629,27 +629,36 @@ export function TeleprompterStudio({
   }
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(TELEPROMPTER_SETTINGS_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as Partial<TeleprompterSettings>;
-        setSpeed(clampNumber(saved.speed, 10, 110, 38));
-        setFontSize(clampNumber(saved.fontSize, 26, 76, 44));
-        setEyeLinePosition(clampNumber(saved.eyeLinePosition, 20, 72, 42));
-        if (saved.facingMode === "user" || saved.facingMode === "environment") {
-          setFacingMode(saved.facingMode);
+    let active = true;
+    const timer = window.setTimeout(() => {
+      if (!active) return;
+      try {
+        const raw = window.localStorage.getItem(TELEPROMPTER_SETTINGS_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw) as Partial<TeleprompterSettings>;
+          setSpeed(clampNumber(saved.speed, 10, 110, 38));
+          setFontSize(clampNumber(saved.fontSize, 26, 76, 44));
+          setEyeLinePosition(clampNumber(saved.eyeLinePosition, 20, 72, 42));
+          if (saved.facingMode === "user" || saved.facingMode === "environment") {
+            setFacingMode(saved.facingMode);
+          }
+          if (typeof saved.mirror === "boolean") setMirror(saved.mirror);
+          if (typeof saved.showGuide === "boolean") setShowGuide(saved.showGuide);
+          if (typeof saved.showControls === "boolean") setShowControls(saved.showControls);
+          setCountdownSeconds(clampNumber(saved.countdownSeconds, 0, 10, 3));
+          if (typeof saved.remoteBinding === "string") setRemoteBinding(saved.remoteBinding);
         }
-        if (typeof saved.mirror === "boolean") setMirror(saved.mirror);
-        if (typeof saved.showGuide === "boolean") setShowGuide(saved.showGuide);
-        if (typeof saved.showControls === "boolean") setShowControls(saved.showControls);
-        setCountdownSeconds(clampNumber(saved.countdownSeconds, 0, 10, 3));
-        if (typeof saved.remoteBinding === "string") setRemoteBinding(saved.remoteBinding);
+      } catch {
+        // Corrupt or unavailable local storage should never block the teleprompter.
+      } finally {
+        if (active) setSettingsLoaded(true);
       }
-    } catch {
-      // Corrupt or unavailable local storage should never block the teleprompter.
-    } finally {
-      setSettingsLoaded(true);
-    }
+    }, 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -683,22 +692,17 @@ export function TeleprompterStudio({
   }, [countdownSeconds]);
 
   useEffect(() => {
-    setVoiceControlAvailable(Boolean(getSpeechRecognitionConstructor()));
+    const timer = window.setTimeout(() => {
+      setVoiceControlAvailable(Boolean(getSpeechRecognitionConstructor()));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    if (!voiceControlEnabled) {
-      setVoiceListening(false);
-      return;
-    }
+    if (!voiceControlEnabled) return;
 
     const Recognition = getSpeechRecognitionConstructor();
-    if (!Recognition) {
-      setVoiceControlAvailable(false);
-      setVoiceControlEnabled(false);
-      setVoiceError("Voice control is not supported in this browser.");
-      return;
-    }
+    if (!Recognition) return;
 
     const recognition = new Recognition();
     let active = true;
@@ -783,7 +787,6 @@ export function TeleprompterStudio({
       return;
     }
 
-    setRemoteDiagnostic("Waiting for browser input… press the remote button now.");
     remoteLearnTimerRef.current = window.setTimeout(() => {
       setRemoteLearning(false);
       setRemoteDiagnostic(
@@ -1070,7 +1073,7 @@ export function TeleprompterStudio({
                   return;
                 }
                 setRemoteLastInput("");
-                setRemoteDiagnostic("");
+                setRemoteDiagnostic("Waiting for browser input… press the remote button now.");
                 setRemoteLearning(true);
               }}
             >
