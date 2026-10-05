@@ -9,7 +9,12 @@ type SlotState = {
   durationMs?: number;
   error?: string;
 };
-type SelectedSlot = { kind: SegmentKind; position: number };
+type SequenceStep = { kind: SegmentKind; position: number };
+type CapturedTake = SequenceStep & {
+  blob: Blob;
+  mimeType: string;
+  fileName: string;
+};
 type VariationRender = {
   id: string;
   hookPosition: number;
@@ -21,41 +26,18 @@ type VariationRender = {
   downloadUrl: string;
 };
 
+const MAX_SEGMENTS_PER_GROUP = 4;
+
 const GROUPS: Array<{
   kind: SegmentKind;
   label: string;
   plural: string;
-  description: string;
   accent: string;
 }> = [
-  {
-    kind: "hook",
-    label: "Hook",
-    plural: "Hooks",
-    description: "The first line or visual that earns the next few seconds.",
-    accent: "lime",
-  },
-  {
-    kind: "body",
-    label: "Body",
-    plural: "Bodies",
-    description: "The core explanation, demo, story, or proof.",
-    accent: "blue",
-  },
-  {
-    kind: "cta",
-    label: "CTA",
-    plural: "CTAs",
-    description: "The close: follow, click, comment, buy, save, or learn more.",
-    accent: "amber",
-  },
+  { kind: "hook", label: "Hook", plural: "Hooks", accent: "lime" },
+  { kind: "body", label: "Body", plural: "Bodies", accent: "blue" },
+  { kind: "cta", label: "CTA", plural: "CTAs", accent: "amber" },
 ];
-
-const EMPTY_SCRIPTS: Record<SegmentKind, string[]> = {
-  hook: ["", "", ""],
-  body: ["", "", ""],
-  cta: ["", "", ""],
-};
 
 function slotKey(kind: SegmentKind, position: number) {
   return kind + ":" + position;
@@ -76,33 +58,124 @@ function inferMimeType(file: File) {
   return "video/mp4";
 }
 
+function buildSequence(counts: Record<SegmentKind, number>) {
+  return GROUPS.flatMap((group) =>
+    Array.from({ length: counts[group.kind] }, (_, index) => ({
+      kind: group.kind,
+      position: index + 1,
+    })),
+  );
+}
+
+function stepName(step: SequenceStep) {
+  const group = GROUPS.find((item) => item.kind === step.kind);
+  return (group?.label || step.kind) + " " + step.position;
+}
+
 export function VariationStudio() {
   const [batchName, setBatchName] = useState("");
   const [sessionId, setSessionId] = useState("");
-  const [scripts, setScripts] = useState<Record<SegmentKind, string[]>>(EMPTY_SCRIPTS);
+  const [counts, setCounts] = useState<Record<SegmentKind, number>>({
+    hook: 3,
+    body: 3,
+    cta: 3,
+  });
+  const [scripts, setScripts] = useState<Record<string, string>>({});
   const [slots, setSlots] = useState<Record<string, SlotState>>({});
-  const [selected, setSelected] = useState<SelectedSlot | null>(null);
-  const [take, setTake] = useState<TeleprompterRecording | null>(null);
+  const [takes, setTakes] = useState<CapturedTake[]>([]);
+  const [started, setStarted] = useState(false);
+  const [segmentsSaved, setSegmentsSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [renders, setRenders] = useState<VariationRender[]>([]);
   const [generating, setGenerating] = useState(false);
   const [globalError, setGlobalError] = useState("");
 
+  const sequence = useMemo(() => buildSequence(counts), [counts]);
+  const currentStep = sequence[takes.length] || null;
+  const currentKey = currentStep ? slotKey(currentStep.kind, currentStep.position) : "";
+  const currentScript = currentStep ? scripts[currentKey] || "" : "";
+  const allTakesCaptured = takes.length === sequence.length;
+  const targetCombinationCount = counts.hook * counts.body * counts.cta;
+
   const readyCounts = useMemo(() => {
-    const counts: Record<SegmentKind, number> = { hook: 0, body: 0, cta: 0 };
-    for (const kind of Object.keys(counts) as SegmentKind[]) {
-      counts[kind] = [1, 2, 3].filter((position) => slots[slotKey(kind, position)]?.state === "ready").length;
+    const ready: Record<SegmentKind, number> = { hook: 0, body: 0, cta: 0 };
+    for (const step of sequence) {
+      if (slots[slotKey(step.kind, step.position)]?.state === "ready") ready[step.kind] += 1;
     }
-    return counts;
-  }, [slots]);
+    return ready;
+  }, [sequence, slots]);
 
   const combinationCount = readyCounts.hook * readyCounts.body * readyCounts.cta;
-  const selectedScript = selected ? scripts[selected.kind][selected.position - 1] : "";
+  const uploadProgress = sequence.length
+    ? Math.round(((readyCounts.hook + readyCounts.body + readyCounts.cta) / sequence.length) * 100)
+    : 0;
 
-  function updateScript(kind: SegmentKind, position: number, value: string) {
-    setScripts((current) => ({
+  function updateCount(kind: SegmentKind, delta: number) {
+    if (started) return;
+    setCounts((current) => ({
       ...current,
-      [kind]: current[kind].map((script, index) => index === position - 1 ? value : script),
+      [kind]: Math.min(MAX_SEGMENTS_PER_GROUP, Math.max(1, current[kind] + delta)),
     }));
+  }
+
+  function updateCurrentScript(value: string) {
+    if (!currentStep) return;
+    setScripts((current) => ({ ...current, [currentKey]: value }));
+  }
+
+  function markCurrentTake(recording: TeleprompterRecording | null) {
+    if (!recording || !currentStep) return;
+
+    const step = currentStep;
+    setTakes((current) => [
+      ...current,
+      {
+        ...step,
+        blob: recording.blob,
+        mimeType: recording.mimeType,
+        fileName: recording.filename,
+      },
+    ]);
+    setSlots((current) => {
+      const next = { ...current };
+      delete next[slotKey(step.kind, step.position)];
+      return next;
+    });
+    setSegmentsSaved(false);
+    setRenders([]);
+    setGlobalError("");
+  }
+
+  function addUploadedTake(file: File) {
+    if (!currentStep) return;
+    const step = currentStep;
+    setTakes((current) => [
+      ...current,
+      {
+        ...step,
+        blob: file,
+        mimeType: inferMimeType(file),
+        fileName: file.name,
+      },
+    ]);
+    setSegmentsSaved(false);
+    setRenders([]);
+    setGlobalError("");
+  }
+
+  function deleteLastTake() {
+    if (!takes.length) return;
+    const last = takes[takes.length - 1];
+
+    setTakes((current) => current.slice(0, -1));
+    setSlots((current) => {
+      const next = { ...current };
+      delete next[slotKey(last.kind, last.position)];
+      return next;
+    });
+    setSegmentsSaved(false);
+    setRenders([]);
+    setGlobalError("");
   }
 
   async function ensureSession() {
@@ -121,50 +194,60 @@ export function VariationStudio() {
     return payload.session.id;
   }
 
-  async function uploadSegment(
-    kind: SegmentKind,
-    position: number,
-    body: Blob,
-    fileName: string,
-    mimeType: string,
-  ) {
-    const key = slotKey(kind, position);
+  async function uploadTake(activeSessionId: string, take: CapturedTake) {
+    const key = slotKey(take.kind, take.position);
+    setSlots((current) => ({ ...current, [key]: { state: "uploading" } }));
+
+    const response = await fetch("/api/creative-circle/variations/" + activeSessionId + "/segments", {
+      method: "POST",
+      headers: {
+        "content-type": take.mimeType || "video/mp4",
+        "x-segment-kind": take.kind,
+        "x-segment-position": String(take.position),
+        "x-file-name": encodeURIComponent(take.fileName),
+      },
+      body: take.blob,
+    });
+    const payload = await response.json().catch(() => ({})) as {
+      segment?: { durationMs?: number };
+      error?: string;
+    };
+
+    if (!response.ok || !payload.segment) {
+      const message = payload.error || "The segment could not be added.";
+      setSlots((current) => ({ ...current, [key]: { state: "error", error: message } }));
+      throw new Error(message);
+    }
+
+    setSlots((current) => ({
+      ...current,
+      [key]: { state: "ready", durationMs: payload.segment?.durationMs },
+    }));
+  }
+
+  async function saveSegments() {
+    if (!allTakesCaptured || saving) return;
+
+    setSaving(true);
+    setSegmentsSaved(false);
     setGlobalError("");
     setRenders([]);
-    setSlots((current) => ({ ...current, [key]: { state: "uploading" } }));
 
     try {
       const activeSessionId = await ensureSession();
-      const response = await fetch("/api/creative-circle/variations/" + activeSessionId + "/segments", {
-        method: "POST",
-        headers: {
-          "content-type": mimeType || "video/mp4",
-          "x-segment-kind": kind,
-          "x-segment-position": String(position),
-          "x-file-name": encodeURIComponent(fileName),
-        },
-        body,
-      });
-      const payload = await response.json().catch(() => ({})) as {
-        segment?: { durationMs?: number };
-        error?: string;
-      };
-      if (!response.ok || !payload.segment) throw new Error(payload.error || "The segment could not be added.");
-
-      setSlots((current) => ({
-        ...current,
-        [key]: { state: "ready", durationMs: payload.segment?.durationMs },
-      }));
-      setTake(null);
+      for (const take of takes) {
+        await uploadTake(activeSessionId, take);
+      }
+      setSegmentsSaved(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "The segment could not be added.";
-      setSlots((current) => ({ ...current, [key]: { state: "error", error: message } }));
-      setGlobalError(message);
+      setGlobalError(error instanceof Error ? error.message : "The recorded segments could not be saved.");
+    } finally {
+      setSaving(false);
     }
   }
 
   async function generate() {
-    if (!sessionId || combinationCount < 1) return;
+    if (!sessionId || !segmentsSaved || combinationCount < 1) return;
     setGenerating(true);
     setGlobalError("");
     setRenders([]);
@@ -181,9 +264,9 @@ export function VariationStudio() {
     }
   }
 
-  return <div className="variation-studio">
-    <section className="variation-batch-bar">
-      <div>
+  return <div className="variation-studio variation-sequential">
+    <section className={"variation-sequence-setup" + (started ? " locked" : "")}>
+      <div className="variation-sequence-batch">
         <span className="micro">BATCH</span>
         <input
           value={batchName}
@@ -192,143 +275,171 @@ export function VariationStudio() {
           placeholder="Campaign or product name"
           aria-label="Variation batch name"
         />
-        <small>{sessionId ? "Batch name locked after the first segment is saved." : "Name it before saving the first segment."}</small>
+        <small>{sessionId ? "Batch name locked after the segments are saved." : "Give this recording session a name."}</small>
       </div>
-      <div className="variation-equation" aria-label={readyCounts.hook + " hooks times " + readyCounts.body + " bodies times " + readyCounts.cta + " CTAs equals " + combinationCount + " videos"}>
-        <span><b>{readyCounts.hook}</b> HOOKS</span>
-        <i>×</i>
-        <span><b>{readyCounts.body}</b> BODIES</span>
-        <i>×</i>
-        <span><b>{readyCounts.cta}</b> CTAs</span>
-        <i>=</i>
-        <strong>{combinationCount}<small>VIDEOS</small></strong>
-      </div>
-    </section>
 
-    <section className="variation-groups">
-      {GROUPS.map((group) => <article key={group.kind} className={"variation-group accent-" + group.accent}>
-        <header>
+      <div className="variation-count-builder">
+        {GROUPS.map((group) => <div className={"variation-count-control accent-" + group.accent} key={group.kind}>
+          <span>{group.plural.toUpperCase()}</span>
           <div>
-            <span className="micro">{group.plural.toUpperCase()}</span>
-            <h2>{group.plural}<span>.</span></h2>
+            <button
+              type="button"
+              disabled={started || counts[group.kind] <= 1}
+              onClick={() => updateCount(group.kind, -1)}
+              aria-label={"Remove one " + group.label}
+            >−</button>
+            <strong>{counts[group.kind]}</strong>
+            <button
+              type="button"
+              disabled={started || counts[group.kind] >= MAX_SEGMENTS_PER_GROUP}
+              onClick={() => updateCount(group.kind, 1)}
+              aria-label={"Add one " + group.label}
+            >+</button>
           </div>
-          <p>{group.description}</p>
-        </header>
+        </div>)}
+      </div>
 
-        <div className="variation-slot-list">
-          {[1, 2, 3].map((position) => {
-            const key = slotKey(group.kind, position);
-            const state = slots[key];
-            const inputId = "variation-upload-" + group.kind + "-" + position;
-            return <div className={"variation-slot " + (state?.state || "empty")} key={key}>
-              <div className="variation-slot-head">
-                <span>{String(position).padStart(2, "0")}</span>
-                <strong>
-                  {state?.state === "ready" ? "READY " + formatDuration(state.durationMs) :
-                    state?.state === "uploading" ? "PREPARING…" :
-                    state?.state === "error" ? "TRY AGAIN" : "EMPTY"}
-                </strong>
-              </div>
+      <div className="variation-target-equation">
+        <span>{counts.hook} HOOKS</span><i>×</i>
+        <span>{counts.body} BODIES</span><i>×</i>
+        <span>{counts.cta} CTAs</span><i>=</i>
+        <strong>{targetCombinationCount}<small>VIDEOS</small></strong>
+      </div>
 
-              <textarea
-                value={scripts[group.kind][position - 1]}
-                onChange={(event) => updateScript(group.kind, position, event.target.value)}
-                placeholder={group.kind === "hook"
-                  ? "Write the hook you want on the teleprompter…"
-                  : group.kind === "body"
-                    ? "Write the body beat or talking points…"
-                    : "Write the CTA…"}
-                aria-label={group.label + " " + position + " script"}
-              />
-
-              <div className="variation-slot-actions">
-                <button
-                  type="button"
-                  disabled={state?.state === "uploading"}
-                  onClick={() => {
-                    setSelected({ kind: group.kind, position });
-                    setTake(null);
-                    setGlobalError("");
-                  }}
-                >
-                  {state?.state === "ready" ? "RE-RECORD" : "RECORD"} <span>●</span>
-                </button>
-                <label htmlFor={inputId}>
-                  UPLOAD <span>↑</span>
-                </label>
-                <input
-                  id={inputId}
-                  type="file"
-                  accept="video/*"
-                  hidden
-                  disabled={state?.state === "uploading"}
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.currentTarget.value = "";
-                    if (!file) return;
-                    void uploadSegment(group.kind, position, file, file.name, inferMimeType(file));
-                  }}
-                />
-              </div>
-
-              {state?.state === "error" && <p className="variation-slot-error">{state.error}</p>}
-            </div>;
-          })}
-        </div>
-      </article>)}
+      {!started && <button
+        type="button"
+        className="variation-start-sequence"
+        onClick={() => {
+          setStarted(true);
+          setGlobalError("");
+          setRenders([]);
+        }}
+      >
+        START RECORDING <span>→</span>
+      </button>}
     </section>
 
-    {selected && <section className="variation-recorder">
-      <div className="variation-recorder-head">
+    {!started && <section className="variation-sequence-intro">
+      <span className="micro">ONE RECORDING FLOW</span>
+      <h2>Set the matrix.<br/><em>Then record straight through.</em></h2>
+      <p>
+        Creative Circle will cue Hook 1, then Hook 2, then every Body and CTA in order. Stop a take and the next prompt loads automatically. Delete always walks backward through your most recent takes, just like TikTok&apos;s multi-clip recorder.
+      </p>
+    </section>}
+
+    {started && <section className="variation-sequence-shell">
+      <header className="variation-sequence-head">
         <div>
-          <span className="micro">RECORD / {selected.kind.toUpperCase()} {String(selected.position).padStart(2, "0")}</span>
-          <h2>Record it once.<br/><em>Reuse it everywhere.</em></h2>
+          <span className="micro">
+            {allTakesCaptured ? "CAPTURE COMPLETE" : "RECORDING SEQUENCE"}
+          </span>
+          <h2>
+            {currentStep
+              ? <>{stepName(currentStep)}<em>.</em></>
+              : <>All {sequence.length} takes captured<em>.</em></>}
+          </h2>
+          <p>
+            {currentStep
+              ? "Record, stop, and Creative Circle moves to the next segment automatically."
+              : "Delete the last take to step backward, or save the full stack when you are happy with it."}
+          </p>
         </div>
-        <button type="button" onClick={() => { setSelected(null); setTake(null); }}>CLOSE ×</button>
+
+        <div className="variation-sequence-progress-copy">
+          <strong>{takes.length}<span>/ {sequence.length}</span></strong>
+          <small>TAKES CAPTURED</small>
+        </div>
+      </header>
+
+      <div className="variation-sequence-track" aria-label={takes.length + " of " + sequence.length + " takes captured"}>
+        {sequence.map((step, index) => {
+          const state = index < takes.length ? "done" : index === takes.length ? "current" : "upcoming";
+          return <div className={"variation-sequence-step " + state} key={slotKey(step.kind, step.position)}>
+            <i />
+            <span>{step.kind.toUpperCase()} {String(step.position).padStart(2, "0")}</span>
+          </div>;
+        })}
       </div>
 
-      <TeleprompterStudio
-        key={slotKey(selected.kind, selected.position)}
-        initialScript={selectedScript}
-        contextLabel={selected.kind.toUpperCase() + " " + String(selected.position).padStart(2, "0") + " / SCRIPT"}
-        captureMode
-        onScriptChange={(value) => updateScript(selected.kind, selected.position, value)}
-        onRecordingChange={setTake}
-      />
-
-      <div className="variation-take-actions">
-        <div>
-          <span className={take ? "ready" : ""}><i /> {take ? "TAKE READY" : "RECORD A TAKE ABOVE"}</span>
-          <small>The take is not uploaded until you add it to this batch.</small>
+      {currentStep && <>
+        <div className="variation-current-tools">
+          <div>
+            <span className="micro">CURRENT TAKE</span>
+            <strong>{stepName(currentStep)}</strong>
+            <small>{takes.length + 1} of {sequence.length}</small>
+          </div>
+          <label className="variation-upload-current">
+            UPLOAD CURRENT ↑
+            <input
+              type="file"
+              accept="video/*"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = "";
+                if (file) addUploadedTake(file);
+              }}
+            />
+          </label>
         </div>
-        <button
-          type="button"
-          className="primary"
-          disabled={!take || slots[slotKey(selected.kind, selected.position)]?.state === "uploading"}
-          onClick={() => {
-            if (!take) return;
-            void uploadSegment(selected.kind, selected.position, take.blob, take.filename, take.mimeType);
-          }}
-        >
-          {slots[slotKey(selected.kind, selected.position)]?.state === "uploading" ? "PREPARING SEGMENT…" : "ADD TAKE TO BATCH →"}
-        </button>
-      </div>
+
+        <TeleprompterStudio
+          key={currentKey}
+          initialScript={currentScript}
+          contextLabel={currentStep.kind.toUpperCase() + " " + String(currentStep.position).padStart(2, "0") + " / SCRIPT"}
+          captureMode
+          sequenceCaptureMode
+          canDeletePreviousTake={takes.length > 0}
+          onDeletePreviousTake={deleteLastTake}
+          onScriptChange={updateCurrentScript}
+          onRecordingChange={markCurrentTake}
+        />
+      </>}
+
+      {allTakesCaptured && <div className="variation-sequence-finish">
+        <div>
+          <span className="micro">STACK COMPLETE</span>
+          <h3>{sequence.length} takes ready.</h3>
+          <p>
+            Save the stack to normalize each clip for combination building. If the last take is wrong, delete it and the recorder jumps back to that segment.
+          </p>
+        </div>
+        <div className="variation-sequence-finish-actions">
+          <button type="button" onClick={deleteLastTake} disabled={saving}>DELETE LAST TAKE</button>
+          <button
+            type="button"
+            className="primary"
+            onClick={() => void saveSegments()}
+            disabled={saving || segmentsSaved}
+          >
+            {saving ? "SAVING " + uploadProgress + "%…" : segmentsSaved ? "SEGMENTS SAVED ✓" : "SAVE SEGMENTS →"}
+          </button>
+        </div>
+      </div>}
+
+      {saving && <div className="variation-upload-progress">
+        <i style={{ width: uploadProgress + "%" }} />
+      </div>}
     </section>}
 
     <section className="variation-generate">
       <div>
         <span className="micro">ASSEMBLE</span>
-        <h2>{combinationCount ? combinationCount + " combinations ready to build." : "Build the matrix."}</h2>
+        <h2>
+          {segmentsSaved
+            ? targetCombinationCount + " combinations ready to build."
+            : "Record the stack, then build the matrix."}
+        </h2>
         <p>
-          Record at least one segment in every column. Creative Circle normalizes each saved segment once, then joins the prepared clips to build the combinations quickly.
+          Each segment is normalized once, then Creative Circle joins the prepared Hook, Body, and CTA clips into every selected combination.
         </p>
       </div>
       <button
         type="button"
-        disabled={!sessionId || combinationCount < 1 || generating}
+        disabled={!sessionId || !segmentsSaved || combinationCount < 1 || generating}
         onClick={() => void generate()}
       >
-        {generating ? "BUILDING " + combinationCount + "…" : "GENERATE " + (combinationCount || 0) + " VIDEOS"} <span>↗</span>
+        {generating ? "BUILDING " + targetCombinationCount + "…" : "GENERATE " + targetCombinationCount + " VIDEOS"} <span>↗</span>
       </button>
     </section>
 

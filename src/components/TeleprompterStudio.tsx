@@ -93,6 +93,9 @@ type TeleprompterStudioProps = {
   initialScript?: string;
   contextLabel?: string;
   captureMode?: boolean;
+  sequenceCaptureMode?: boolean;
+  canDeletePreviousTake?: boolean;
+  onDeletePreviousTake?: () => void;
   onScriptChange?: (script: string) => void;
   onRecordingChange?: (recording: TeleprompterRecording | null) => void;
 };
@@ -135,6 +138,9 @@ export function TeleprompterStudio({
   initialScript = DEFAULT_SCRIPT,
   contextLabel,
   captureMode = false,
+  sequenceCaptureMode = false,
+  canDeletePreviousTake = false,
+  onDeletePreviousTake,
   onScriptChange,
   onRecordingChange,
 }: TeleprompterStudioProps = {}) {
@@ -487,19 +493,19 @@ export function TeleprompterStudio({
     setFullscreenInstallHint(!runningStandalone);
   }
 
-  async function startRecording() {
-    if (recording) return;
+  async function startRecording(): Promise<boolean> {
+    if (recording) return false;
     setRecordingError("");
 
     if (typeof MediaRecorder === "undefined") {
       setRecordingError("Video recording is not supported in this browser.");
-      return;
+      return false;
     }
 
     let cameraStream = streamRef.current;
     const hasLiveVideo = cameraStream?.getVideoTracks().some((track) => track.readyState === "live") === true;
     if (!hasLiveVideo) cameraStream = await startCamera();
-    if (!cameraStream) return;
+    if (!cameraStream) return false;
 
     try {
       stopMic();
@@ -580,6 +586,7 @@ export function TeleprompterStudio({
       // regressions seen with short MediaRecorder timeslices.
       recorder.start();
       setRecording(true);
+      return true;
     } catch (error) {
       stopMic();
       stopRecordingVideoPump();
@@ -588,6 +595,7 @@ export function TeleprompterStudio({
         ? "Microphone permission was denied. Allow microphone access to record video with audio."
         : "I could not start recording on this device.";
       setRecordingError(message);
+      return false;
     }
   }
 
@@ -595,6 +603,52 @@ export function TeleprompterStudio({
     const recorder = recorderRef.current;
     if (!recorder || recorder.state === "inactive") return;
     recorder.stop();
+  }
+
+  async function beginSequenceRecording() {
+    const started = await startRecording();
+    if (!started) return;
+
+    const prompt = promptRef.current;
+    scrollPositionRef.current = 0;
+    if (prompt) prompt.scrollTop = 0;
+    lastFrameRef.current = null;
+    if (scriptRef.current.trim()) setPlayback(true);
+  }
+
+  async function startSequenceCapture() {
+    if (countdownTimerRef.current !== null) {
+      cancelCountdown();
+      return;
+    }
+
+    resetPrompt();
+    const delay = countdownSecondsRef.current;
+    if (delay <= 0) {
+      await beginSequenceRecording();
+      return;
+    }
+
+    let remaining = delay;
+    setCountdownValue(remaining);
+    countdownTimerRef.current = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        if (countdownTimerRef.current !== null) {
+          window.clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+        setCountdownValue(null);
+        void beginSequenceRecording();
+        return;
+      }
+      setCountdownValue(remaining);
+    }, 1000);
+  }
+
+  function stopSequenceCapture() {
+    stopRecording();
+    resetPrompt();
   }
 
   function downloadRecording() {
@@ -1199,9 +1253,9 @@ export function TeleprompterStudio({
           <div className="teleprompter-prompt-spacer end" />
         </div>
 
-        <div className="teleprompter-stage-controls">
+        <div className={`teleprompter-stage-controls${sequenceCaptureMode ? " sequence" : ""}`}>
           <button type="button" className="teleprompter-reset" onClick={resetPrompt}>↺</button>
-          <button
+          {!sequenceCaptureMode && <button
             type="button"
             className={`teleprompter-play${playing || countdownValue !== null ? " playing" : ""}`}
             onClick={togglePlayback}
@@ -1209,15 +1263,43 @@ export function TeleprompterStudio({
           >
             <span>{countdownValue !== null ? "×" : playing ? "Ⅱ" : "▶"}</span>
             {countdownValue !== null ? "CANCEL" : playing ? "PAUSE" : "START"}
-          </button>
+          </button>}
           <button
             type="button"
             className={`teleprompter-record${recording ? " recording" : ""}`}
-            onClick={() => recording ? stopRecording() : void startRecording()}
+            onClick={() => {
+              if (sequenceCaptureMode) {
+                if (countdownValue !== null) {
+                  cancelCountdown();
+                  return;
+                }
+                if (recording) {
+                  stopSequenceCapture();
+                  return;
+                }
+                void startSequenceCapture();
+                return;
+              }
+              if (recording) stopRecording();
+              else void startRecording();
+            }}
           >
             <i />
-            {recording ? `STOP ${formatDuration(recordingSeconds)}` : "RECORD"}
+            {countdownValue !== null && sequenceCaptureMode
+              ? `CANCEL ${countdownValue}`
+              : recording
+                ? `STOP ${formatDuration(recordingSeconds)}`
+                : "RECORD"}
           </button>
+          {sequenceCaptureMode && <button
+            type="button"
+            className="teleprompter-delete-take"
+            disabled={recording || countdownValue !== null || !canDeletePreviousTake}
+            onClick={onDeletePreviousTake}
+          >
+            <span>⌫</span>
+            DELETE LAST
+          </button>}
           <div className="teleprompter-speed-readout">
             <span>SPEED</span>
             <strong>{speed}</strong>
@@ -1226,11 +1308,15 @@ export function TeleprompterStudio({
       </div>
 
       <div className="teleprompter-footnote">
-        <span>{captureMode ? "This take stays on this device until you add it to the batch. The teleprompter text is not burned into the video." : "Recording stays on this device. The teleprompter text is not burned into the video."}</span>
+        <span>{sequenceCaptureMode
+          ? "Stop recording to lock this take and advance automatically. Delete Last walks backward through your recorded stack."
+          : captureMode
+            ? "This take stays on this device until you add it to the batch. The teleprompter text is not burned into the video."
+            : "Recording stays on this device. The teleprompter text is not burned into the video."}</span>
         <span>Best results: place the eye line close to your camera lens.</span>
       </div>
 
-      {recordedUrl && <section className="teleprompter-recording-result">
+      {recordedUrl && !sequenceCaptureMode && <section className="teleprompter-recording-result">
         <div className="teleprompter-recording-result-copy">
           <span className="micro">LATEST TAKE</span>
           <h3>Recording ready.</h3>
