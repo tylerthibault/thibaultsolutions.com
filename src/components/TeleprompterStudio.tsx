@@ -82,6 +82,21 @@ The teleprompter will scroll over your live camera preview so you can keep your 
 
 Adjust the speed and text size until the pacing feels natural, then press Start.`;
 
+export type TeleprompterRecording = {
+  blob: Blob;
+  mimeType: string;
+  url: string;
+  filename: string;
+};
+
+type TeleprompterStudioProps = {
+  initialScript?: string;
+  contextLabel?: string;
+  captureMode?: boolean;
+  onScriptChange?: (script: string) => void;
+  onRecordingChange?: (recording: TeleprompterRecording | null) => void;
+};
+
 function clampNumber(value: unknown, min: number, max: number, fallback: number) {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
@@ -116,7 +131,13 @@ function recordingFilename(mimeType: string) {
   return `creative-circle-${stamp}.${recordingExtension(mimeType)}`;
 }
 
-export function TeleprompterStudio() {
+export function TeleprompterStudio({
+  initialScript = DEFAULT_SCRIPT,
+  contextLabel,
+  captureMode = false,
+  onScriptChange,
+  onRecordingChange,
+}: TeleprompterStudioProps = {}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -136,12 +157,12 @@ export function TeleprompterStudio() {
   const countdownTimerRef = useRef<number | null>(null);
   const countdownSecondsRef = useRef(3);
   const playingRef = useRef(false);
-  const scriptRef = useRef(DEFAULT_SCRIPT);
+  const scriptRef = useRef(initialScript);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const voiceRestartTimerRef = useRef<number | null>(null);
   const remoteLearnTimerRef = useRef<number | null>(null);
 
-  const [script, setScript] = useState(DEFAULT_SCRIPT);
+  const [script, setScript] = useState(initialScript);
   const [speed, setSpeed] = useState(38);
   const [fontSize, setFontSize] = useState(44);
   const [eyeLinePosition, setEyeLinePosition] = useState(42);
@@ -259,6 +280,7 @@ export function TeleprompterStudio() {
     setRecordedUrl("");
     setRecordedBlob(null);
     setRecordedMimeType("");
+    onRecordingChange?.(null);
   }
 
   function stopCamera(force = false) {
@@ -538,6 +560,12 @@ export function TeleprompterStudio() {
         setRecordedBlob(blob);
         setRecordedMimeType(finalType);
         setRecordedUrl(url);
+        onRecordingChange?.({
+          blob,
+          mimeType: finalType,
+          url,
+          filename: recordingFilename(finalType),
+        });
       };
 
       discardRecording();
@@ -912,7 +940,7 @@ export function TeleprompterStudio() {
     <aside className={`teleprompter-editor${showControls ? "" : " collapsed"}`}>
       <div className="teleprompter-editor-head">
         <div>
-          <span className="micro">SCRIPT</span>
+          <span className="micro">{contextLabel || "SCRIPT"}</span>
           <h2>What are we saying?</h2>
         </div>
         <div className="teleprompter-editor-head-actions">
@@ -940,7 +968,9 @@ export function TeleprompterStudio() {
           className="teleprompter-script-input"
           value={script}
           onChange={(event) => {
-            setScript(event.target.value);
+            const nextScript = event.target.value;
+            setScript(nextScript);
+            onScriptChange?.(nextScript);
             resetPrompt();
           }}
           spellCheck
@@ -1193,7 +1223,7 @@ export function TeleprompterStudio() {
       </div>
 
       <div className="teleprompter-footnote">
-        <span>Recording stays on this device. The teleprompter text is not burned into the video.</span>
+        <span>{captureMode ? "This take stays on this device until you add it to the batch. The teleprompter text is not burned into the video." : "Recording stays on this device. The teleprompter text is not burned into the video."}</span>
         <span>Best results: place the eye line close to your camera lens.</span>
       </div>
 
@@ -1202,7 +1232,9 @@ export function TeleprompterStudio() {
           <span className="micro">LATEST TAKE</span>
           <h3>Recording ready.</h3>
           <p>
-            Review the take, save it to this device, or use Share on mobile to send it directly into your editing workflow.
+            {captureMode
+              ? "Review the take, then add it to your variation batch when it feels right."
+              : "Review the take, save it to this device, or use Share on mobile to send it directly into your editing workflow."}
           </p>
           <div className="teleprompter-recording-actions">
             <button type="button" className="primary" onClick={downloadRecording}>SAVE RECORDING</button>
