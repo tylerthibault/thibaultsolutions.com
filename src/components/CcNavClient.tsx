@@ -61,6 +61,12 @@ export function CcNavClient({
       shortLabel: "Prompt",
       active: (value: string) => value.startsWith("/creative-circle/teleprompter"),
     }] : []),
+    ...(labAccess ? [{
+      href: "/creative-circle/variations",
+      label: "Variation Studio",
+      shortLabel: "Variations",
+      active: (value: string) => value.startsWith("/creative-circle/variations"),
+    }] : []),
     ...((feedbackAccess || publicGuest) ? [{
       href: "/creative-circle/review",
       label: "Feedback Lab",
