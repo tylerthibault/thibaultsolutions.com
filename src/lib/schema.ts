@@ -125,6 +125,54 @@ export const exportsTable = pgTable("exports", {
 }, (t) => [uniqueIndex("export_render_unique").on(t.renderJobId), index("export_project_idx").on(t.projectId)]);
 
 
+export const variationSessions = pgTable("variation_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("variation_session_owner_idx").on(t.ownerId, t.updatedAt),
+]);
+
+export const variationSegments = pgTable("variation_segments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sessionId: uuid("session_id").notNull().references(() => variationSessions.id, { onDelete: "cascade" }),
+  ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  position: integer("position").notNull(),
+  storageKey: text("storage_key").notNull().unique(),
+  originalName: text("original_name").notNull(),
+  mimeType: text("mime_type").notNull().default("video/mp4"),
+  sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+  durationMs: integer("duration_ms").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("variation_segment_slot_unique").on(t.sessionId, t.kind, t.position),
+  index("variation_segment_session_idx").on(t.sessionId, t.kind, t.position),
+  index("variation_segment_owner_idx").on(t.ownerId, t.updatedAt),
+]);
+
+export const variationRenders = pgTable("variation_renders", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sessionId: uuid("session_id").notNull().references(() => variationSessions.id, { onDelete: "cascade" }),
+  ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  hookPosition: integer("hook_position").notNull(),
+  bodyPosition: integer("body_position").notNull(),
+  ctaPosition: integer("cta_position").notNull(),
+  storageKey: text("storage_key").notNull().unique(),
+  fileName: text("file_name").notNull(),
+  sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+  durationMs: integer("duration_ms").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("variation_render_combo_unique").on(t.sessionId, t.hookPosition, t.bodyPosition, t.ctaPosition),
+  index("variation_render_session_idx").on(t.sessionId, t.createdAt),
+  index("variation_render_owner_idx").on(t.ownerId, t.createdAt),
+]);
+
+
 export const circleMemberships = pgTable("circle_memberships", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerId: text("owner_id").notNull().references(() => user.id, { onDelete: "cascade" }),
@@ -281,4 +329,4 @@ export const ugcBrandLeads = pgTable("ugc_brand_leads", {
   index("ugc_brand_verified_idx").on(t.lastVerifiedAt),
 ]);
 
-export const schema = { user, session, account, verification, mediaAssets, homepageUgcSlots, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, creativeCircleInvitations, feedbackVideos, feedbackAssignments, feedbackViews, feedbackComments, blockedFeedbackIps, ugcDiscoveryTargets, ugcBrandLeads };
+export const schema = { user, session, account, verification, mediaAssets, homepageUgcSlots, projects, renderJobs, exportsTable, circleMemberships, circleInvitations, creativeCircleInvitations, feedbackVideos, feedbackAssignments, feedbackViews, feedbackComments, blockedFeedbackIps, ugcDiscoveryTargets, ugcBrandLeads, variationSessions, variationSegments, variationRenders };
