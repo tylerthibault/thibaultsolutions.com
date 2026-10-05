@@ -5,7 +5,7 @@ import { apiSectionUser } from "@/src/lib/api-auth";
 import { db } from "@/src/lib/db";
 import { variationRenders, variationSegments, variationSessions } from "@/src/lib/schema";
 import { ensureStorage, fileSize, removeStored, storagePath } from "@/src/lib/storage";
-import { assembleVariationVideo, buildVariationCombinations, isVariationKind, variationFileName, type VariationKind } from "@/src/lib/variation-video";
+import { assembleVariationVideo, buildVariationCombinations, isVariationKind, variationFileName } from "@/src/lib/variation-video";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -23,14 +23,12 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const rows = await db.select().from(variationSegments)
     .where(and(eq(variationSegments.sessionId, id), eq(variationSegments.ownerId, user.id)));
 
-  const segments = rows
-    .filter((row): row is typeof row & { kind: VariationKind } => isVariationKind(row.kind))
-    .map((row) => ({
-      kind: row.kind,
-      position: row.position,
-      storageKey: row.storageKey,
-      durationMs: row.durationMs,
-    }));
+  const segments = rows.flatMap((row) => isVariationKind(row.kind) ? [{
+    kind: row.kind,
+    position: row.position,
+    storageKey: row.storageKey,
+    durationMs: row.durationMs,
+  }] : []);
 
   const combinations = buildVariationCombinations(segments);
   if (!combinations.length) {
