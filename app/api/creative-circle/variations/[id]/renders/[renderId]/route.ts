@@ -24,7 +24,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string;
   const stream = createReadStream(storagePath("renders", render.storageKey));
   const fileName = render.fileName.replace(/[\r\n"]/g, "-");
 
-  return new Response(Readable.toWeb(stream) as ReadableStream<Uint8Array>, {
+  return new Response(Readable.toWeb(stream) as ReadableStream, {
     headers: {
       "Content-Type": "video/mp4",
       "Content-Length": String(render.sizeBytes),
