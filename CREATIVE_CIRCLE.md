@@ -79,4 +79,13 @@ docker build -t creative-circle .
 
 CI runs the same validation against PostgreSQL 17 and an installed FFmpeg binary. It also filters npm audit findings against the actual production dependency tree, seeds the owner account, boots the built Next server plus pg-boss worker, authenticates through Better Auth, uploads a real portrait H.264/AAC fixture, saves two effects, renders a 720p MP4, downloads it, verifies H.264/AAC with FFprobe, and deletes the export.
 
-`GET /api/health` is available for Coolify health checks. It verifies database access and persistent media directory availability without returning private project data.
+`GET /api/health` is the Coolify readiness check. It verifies database access and persistent media directory availability without returning private project data. It also returns the deployed revision from Coolify's **runtime** `SOURCE_COMMIT` and branch from `COOLIFY_BRANCH`; neither is a secret. Unlike build-time commit injection, runtime values do not need Docker cache changes.
+
+To check exactly what code is serving traffic:
+
+```bash
+curl -fsS https://thibaultsolutions.com/api/health
+curl -fsS 'https://thibaultsolutions.com/api/health?expected=FULL_GIT_SHA'
+```
+
+A matching SHA returns `matchesExpectedCommit: true`. A different SHA (or an unknown deployed SHA) returns `false`. The `ok` flag is **only** readiness, not a Git match; `ok: true` with `matchesExpectedCommit: false` is possible. Read `deployment.branch`, `deployment.commit`, and `deployment.shortCommit` alongside it. If Coolify is not supplying those variables, set `APP_REVISION` and `APP_BRANCH` on the runtime container, then redeploy. For privacy/security, only revision and branch metadata are exposed.
