@@ -780,23 +780,26 @@ export function TeleprompterStudio({
       window.clearTimeout(autoStartSequenceTimerRef.current);
       autoStartSequenceTimerRef.current = null;
     }
-    if (recordingUrlRef.current) {
-      URL.revokeObjectURL(recordingUrlRef.current);
-      recordingUrlRef.current = null;
-    }
-    setRecordedUrl("");
-    setRecordedBlob(null);
-    setRecordedMimeType("");
-    scriptRef.current = initialScript;
-    setScript(initialScript);
-    resetPrompt();
+    const syncTimer = window.setTimeout(() => {
+      if (recordingUrlRef.current) {
+        URL.revokeObjectURL(recordingUrlRef.current);
+        recordingUrlRef.current = null;
+      }
+      setRecordedUrl("");
+      setRecordedBlob(null);
+      setRecordedMimeType("");
+      scriptRef.current = initialScript;
+      setScript(initialScript);
+      resetPrompt();
 
-    if (autoStartSequence) {
-      autoStartSequenceTimerRef.current = window.setTimeout(() => {
-        autoStartSequenceTimerRef.current = null;
-        void startSequenceCaptureRef.current();
-      }, 100);
-    }
+      if (autoStartSequence) {
+        autoStartSequenceTimerRef.current = window.setTimeout(() => {
+          autoStartSequenceTimerRef.current = null;
+          void startSequenceCaptureRef.current();
+        }, 100);
+      }
+    }, 0);
+    return () => window.clearTimeout(syncTimer);
   }, [sequenceCaptureMode, sequenceStepKey, initialScript, autoStartSequence, resetPrompt]);
 
   useEffect(() => {
