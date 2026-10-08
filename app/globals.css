@@ -2286,3 +2286,129 @@
   .teleprompter-stage-controls.sequence .teleprompter-speed-readout{display:none}
   .teleprompter-delete-take{min-width:78px;font-size:6px}
 }
+
+
+/* One-script capture and in-stage take approval */
+.variation-sequence-setup:not(.locked) .variation-sequence-batch{grid-column:1/-1}
+.variation-master-script{
+  grid-column:1/-1;
+  display:grid;
+  gap:12px;
+  min-width:0;
+  padding:18px;
+  border:1px solid #344251;
+  border-radius:12px;
+  background:#0b1118;
+}
+.variation-master-script-heading{
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:12px;
+}
+.variation-master-script-heading h3{
+  margin:6px 0 0;
+  font-size:clamp(22px,2.4vw,32px);
+  letter-spacing:-.045em;
+}
+.variation-master-script-heading small,
+.variation-master-script p{
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.65;
+}
+.variation-master-script p{margin:0}
+.variation-master-script code{
+  padding:2px 5px;
+  border:1px solid #384656;
+  border-radius:4px;
+  color:var(--lime);
+  background:#111a24;
+}
+.variation-master-script-input{
+  display:block;
+  width:100%;
+  min-height:220px;
+  padding:16px;
+  border:1px solid #405060;
+  border-radius:10px;
+  outline:none;
+  resize:vertical;
+  background:#070b10;
+  color:var(--ink);
+  font:500 14px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;
+}
+.variation-master-script-input:focus{border-color:var(--lime)}
+.variation-master-script-input::placeholder{color:#647585}
+.variation-master-script .variation-master-script-error{color:#ff969b;font-weight:700}
+.variation-master-script .variation-master-script-success{color:var(--lime);font-weight:700}
+.teleprompter-script-input[readonly]{cursor:default}
+.teleprompter-record:disabled{opacity:.35;cursor:not-allowed}
+.teleprompter-sequence-review{
+  position:absolute;
+  z-index:16;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  overflow-y:auto;
+  padding:24px 18px;
+  background:rgba(4,7,11,.92);
+  backdrop-filter:blur(14px);
+  text-align:center;
+}
+.teleprompter-sequence-review>.micro{color:var(--lime)}
+.teleprompter-sequence-review h3{
+  margin:0;
+  font-size:clamp(28px,5vw,48px);
+  line-height:1;
+  letter-spacing:-.06em;
+}
+.teleprompter-sequence-review p{
+  margin:0;
+  color:#a4aeba;
+  font-size:11px;
+}
+.teleprompter-sequence-review video{
+  display:block;
+  width:min(100%,330px);
+  max-height:min(42vh,440px);
+  min-height:0;
+  border:1px solid #3b4753;
+  border-radius:12px;
+  object-fit:contain;
+  background:#000;
+}
+.teleprompter-sequence-review-actions{
+  display:flex;
+  width:min(100%,420px);
+  gap:10px;
+}
+.teleprompter-sequence-review-actions button{
+  flex:1;
+  min-height:48px;
+  padding:9px;
+  border:1px solid #4a5563;
+  border-radius:10px;
+  background:#17202a;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.06em;
+  cursor:pointer;
+}
+.teleprompter-sequence-review-actions button.primary{
+  border-color:var(--lime);
+  background:var(--lime);
+  color:#081000;
+}
+@media(max-width:760px){
+  .variation-master-script{padding:13px;grid-column:1/-1}
+  .variation-sequence-setup:not(.locked) .variation-sequence-batch{grid-column:1/-1}
+  .variation-master-script-input{min-height:180px;font-size:13px}
+  .teleprompter-sequence-review{padding:12px 10px;gap:8px}
+  .teleprompter-sequence-review video{max-height:36vh}
+}
