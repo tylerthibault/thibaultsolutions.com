@@ -1,0 +1,23 @@
+name: Variation Studio Code Checks
+on:
+  pull_request:
+    paths:
+      - 'src/components/VariationStudio.tsx'
+      - 'src/components/TeleprompterStudio.tsx'
+      - 'src/lib/variation-script.ts'
+      - 'tests/variation-script.test.ts'
+      - 'app/globals.css'
+      - '.github/workflows/variation-code-checks.yml'
+jobs:
+  code-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
