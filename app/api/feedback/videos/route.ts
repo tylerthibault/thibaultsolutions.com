@@ -87,7 +87,8 @@ export async function POST(request: Request) {
     if (!linked) return NextResponse.json({ error: "Use a valid YouTube, TikTok, or Instagram video link." }, { status: 400 });
     sourceUrl = linked.canonicalUrl;
     provider = linked.provider;
-    thumbnailUrl = await resolveFeedbackThumbnail(linked);
+    // TikTok CDN thumbnail URLs expire; its cover is fetched/cached by the thumbnail endpoint.
+    thumbnailUrl = linked.provider === "tiktok" ? null : await resolveFeedbackThumbnail(linked);
   }
 
   const [video] = await db.insert(feedbackVideos).values({
