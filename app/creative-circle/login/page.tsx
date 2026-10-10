@@ -18,6 +18,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <p className="muted" style={{ marginTop: 18, fontSize: 11 }}>
         Need an account? <Link href="/creative-circle/signup" style={{ color: "var(--lime)" }}>Sign up with access PIN ↗</Link>
       </p>
+      <p className="muted" style={{ marginTop: 18, fontSize: 11 }}>
+        Just leaving feedback? <Link href="/feedback" style={{ color: "var(--lime)" }}>Open Feedback Lab without signing in ↗</Link>
+      </p>
     </section>
   </main>;
 }
