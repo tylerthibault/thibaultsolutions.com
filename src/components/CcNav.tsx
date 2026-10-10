@@ -8,18 +8,15 @@ export async function CcNav({ userEmail }: { userEmail?: string }) {
   const admin = isCreativeCircleAdmin(userEmail);
   const publicGuest = !userEmail;
   let labAccess = admin;
-  let feedbackAccess = admin;
   let identityLabel = userEmail;
 
   if (userEmail && !admin) {
     const [row] = await db.select({
       username: users.username,
       labAccess: users.creativeCircleLabAccess,
-      feedbackAccess: users.creativeCircleFeedbackAccess,
     }).from(users).where(eq(users.email, userEmail)).limit(1);
 
     labAccess = row?.labAccess === true;
-    feedbackAccess = row?.feedbackAccess === true;
     if (row?.username) identityLabel = `@${row.username}`;
   }
 
@@ -27,7 +24,6 @@ export async function CcNav({ userEmail }: { userEmail?: string }) {
     admin={admin}
     publicGuest={publicGuest}
     labAccess={labAccess}
-    feedbackAccess={feedbackAccess}
     identityLabel={identityLabel}
   />;
 }
