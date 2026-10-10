@@ -7,9 +7,13 @@ import { CcNav } from "@/src/components/CcNav";
 import { SignOutButton } from "@/src/components/SignOutButton";
 import { parseFeedbackLink, resolveFeedbackOrientation, resolveFeedbackThumbnail, type FeedbackOrientation } from "@/src/lib/feedback-links";
 import { DeleteFeedbackVideoButton } from "@/src/components/DeleteFeedbackVideoButton";
+import { FeedbackVideoThumb as VideoThumb } from "@/src/components/FeedbackVideoThumb";
 
 async function thumbnailFor(video: typeof feedbackVideos.$inferSelect) {
   if (video.sourceType === "upload" && video.assetId) {
+    return `/api/feedback/videos/${video.id}/thumbnail`;
+  }
+  if (video.sourceType === "link" && video.provider === "tiktok" && video.sourceUrl) {
     return `/api/feedback/videos/${video.id}/thumbnail`;
   }
   if (video.thumbnailUrl) return video.thumbnailUrl;
@@ -24,24 +28,6 @@ async function thumbnailFor(video: typeof feedbackVideos.$inferSelect) {
       .where(eq(feedbackVideos.id, video.id));
   }
   return thumbnail;
-}
-
-function VideoThumb({
-  src,
-  title,
-  orientation,
-}: {
-  src: string | null;
-  title: string;
-  orientation: FeedbackOrientation;
-}) {
-  const className = `feedback-card-thumb ${orientation}`;
-  if (!src) return <div className={`${className} fallback`}><span>NO PREVIEW</span></div>;
-  return <div className={className}>
-    <img src={src} alt="" loading="lazy"/>
-    <span className="feedback-thumb-play">▶</span>
-    <span className="sr-only">{title}</span>
-  </div>;
 }
 
 function SourceBadge({ type, provider }: { type: string; provider: string | null }) {
