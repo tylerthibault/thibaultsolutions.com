@@ -461,7 +461,7 @@ export function TeleprompterStudio({
   }, [pausePlayback, restartPlayback, resumePlayback, startPlayback]);
 
   function openScriptEditor() {
-    if (recording) return;
+    if (recording || scriptReadOnly) return;
     if (document.fullscreenElement) {
       void document.exitFullscreen().catch(() => undefined);
     }
@@ -1253,7 +1253,7 @@ export function TeleprompterStudio({
         </div>
 
         <div className="teleprompter-toolbar-actions">
-          <button type="button" disabled={recording} onClick={openScriptEditor}>EDIT PROMPT</button>
+          {!scriptReadOnly && <button type="button" disabled={recording} onClick={openScriptEditor}>EDIT PROMPT</button>}
           <button type="button" disabled={recording} onClick={() => cameraOn ? stopCamera() : void startCamera()}>
             {cameraOn ? "STOP CAMERA" : "ENABLE CAMERA"}
           </button>
@@ -1301,7 +1301,7 @@ export function TeleprompterStudio({
           aria-label="Exit fullscreen"
         >×</button>}
 
-        {fullscreenActive && <button type="button" className="teleprompter-fullscreen-edit" disabled={recording} onClick={openScriptEditor}>EDIT PROMPT</button>}
+        {fullscreenActive && !scriptReadOnly && <button type="button" className="teleprompter-fullscreen-edit" disabled={recording} onClick={openScriptEditor}>EDIT PROMPT</button>}
 
         {pseudoFullscreen && fullscreenInstallHint && <div className="teleprompter-fullscreen-hint">
           <strong>BROWSER-FREE MODE</strong>
