@@ -5,6 +5,7 @@ import { isCreativeCircleAdmin } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { feedbackVideos, mediaAssets, projects } from "@/src/lib/schema";
 import { removeStored } from "@/src/lib/storage";
+import { tiktokThumbnailCacheKey } from "@/src/lib/feedback-tiktok-thumbnail";
 
 export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const current = await apiSectionUser(request, "feedback");
@@ -30,6 +31,9 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
 
   // Clean up any interrupted upload and generated playback cache.
   await removeStored("temp", `${id}.upload`);
+  if (video.sourceType === "link" && video.provider === "tiktok") {
+    await removeStored("thumbnails", tiktokThumbnailCacheKey(id));
+  }
 
   if (assetId) {
     await removeStored("renders", `${assetId}.feedback-browser.mp4`);

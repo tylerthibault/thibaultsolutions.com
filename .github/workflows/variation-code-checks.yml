@@ -1,0 +1,46 @@
+name: Variation Studio Code Checks
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    paths:
+      - 'src/components/VariationStudio.tsx'
+      - 'src/components/QuickRecordingStudio.tsx'
+      - 'src/components/QuickRecordingStudio.module.css'
+      - 'src/lib/quick-recording.ts'
+      - 'app/creative-circle/teleprompter/page.tsx'
+      - 'app/api/creative-circle/recordings/assemble/route.ts'
+      - 'tests/quick-recording.test.ts'
+      - 'tests/quick-recording-video.test.ts'
+      - 'src/lib/quick-recording-storage.ts'
+      - 'tests/quick-recording-temp.test.ts'
+      - 'scripts/worker.ts'
+      - 'src/components/TeleprompterStudio.tsx'
+      - 'src/lib/variation-script.ts'
+      - 'src/lib/deployment-version.ts'
+      - 'app/api/health/route.ts'
+      - 'tests/deployment-version.test.ts'
+      - 'tests/variation-script.test.ts'
+      - 'app/globals.css'
+      - '.github/workflows/variation-code-checks.yml'
+jobs:
+  code-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: npm test
+      - run: npm run build
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/creative_circle
+          APP_URL: http://localhost:3000
+          BETTER_AUTH_SECRET: creative-circle-ci-build-secret-only
+          CREATIVE_CIRCLE_SIGNUP_PIN: '735194'
+          OWNER_EMAIL: owner@example.test

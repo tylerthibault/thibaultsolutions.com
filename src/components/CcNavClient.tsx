@@ -30,13 +30,11 @@ export function CcNavClient({
   admin,
   publicGuest,
   labAccess,
-  feedbackAccess,
   identityLabel,
 }: {
   admin: boolean;
   publicGuest: boolean;
   labAccess: boolean;
-  feedbackAccess: boolean;
   identityLabel?: string;
 }) {
   const pathname = usePathname();
@@ -44,9 +42,9 @@ export function CcNavClient({
 
   const navItems: NavItem[] = [
     {
-      href: "/creative-circle",
-      label: "Home",
-      shortLabel: "Home",
+      href: publicGuest ? "/" : "/creative-circle",
+      label: publicGuest ? "Website" : "Home",
+      shortLabel: publicGuest ? "Site" : "Home",
       active: (value) => value === "/creative-circle",
     },
     ...(labAccess ? [{
@@ -67,12 +65,12 @@ export function CcNavClient({
       shortLabel: "Variations",
       active: (value: string) => value.startsWith("/creative-circle/variations"),
     }] : []),
-    ...((feedbackAccess || publicGuest) ? [{
+    {
       href: "/creative-circle/review",
       label: "Feedback Lab",
       shortLabel: "Feedback",
       active: (value: string) => value.startsWith("/creative-circle/review"),
-    }] : []),
+    },
     ...(admin ? [{
       href: "/creative-circle/admin/ugc-brands",
       label: "UGC Radar",

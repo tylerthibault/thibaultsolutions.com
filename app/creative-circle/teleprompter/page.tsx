@@ -1,6 +1,6 @@
 import { requireUser } from "@/src/lib/auth";
 import { CcNav } from "@/src/components/CcNav";
-import { TeleprompterStudio } from "@/src/components/TeleprompterStudio";
+import { QuickRecordingStudio } from "@/src/components/QuickRecordingStudio";
 
 export default async function TeleprompterPage() {
   const user = await requireUser();
@@ -10,15 +10,12 @@ export default async function TeleprompterPage() {
     <main className="teleprompter-page">
       <header className="teleprompter-page-head">
         <div>
-          <span className="micro" style={{ color: "var(--lime)" }}>CREATIVE CIRCLE / TELEPROMPTER</span>
-          <h1>Stay on script.<br/><em>Stay on camera.</em></h1>
+          <span className="micro" style={{ color: "var(--lime)" }}>CREATIVE CIRCLE / TELEPROMPTER V6.1</span>
+          <h1>Film the parts.<br/><em>Save one video.</em></h1>
         </div>
-        <p>
-          Put your script over a live camera preview, set a comfortable reading speed, and keep your eye line close to the lens.
-        </p>
+        <p>Record your hook, two body sections, and CTA using the teleprompter. Then join the clips and download a finished video without an editor.</p>
       </header>
-
-      <TeleprompterStudio />
+      <QuickRecordingStudio />
     </main>
   </>;
 }

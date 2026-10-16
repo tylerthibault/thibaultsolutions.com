@@ -103,7 +103,9 @@ export default async function FeedbackVideoPage({ params }: { params: Promise<{ 
         provider: access.video.provider,
         durationMs: access.video.durationMs,
         embedUrl: linked?.embedUrl ?? null,
-        thumbnailUrl: access.video.thumbnailUrl,
+        thumbnailUrl: access.video.provider === "tiktok"
+          ? `/api/feedback/videos/${id}/thumbnail`
+          : access.video.thumbnailUrl,
       }}
       initialComments={comments}
       currentUser={current ? { id: current.id, name: current.name, email: current.email } : null}

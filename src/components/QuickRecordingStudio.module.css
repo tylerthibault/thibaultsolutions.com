@@ -1,0 +1,26 @@
+.root{display:grid;gap:16px}
+.mode{display:flex;gap:8px;flex-wrap:wrap}
+.mode button,.secondary{border:1px solid #405060;background:#0c131a;color:#c8d1db;padding:12px 16px;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;min-height:44px}
+.mode button[aria-pressed="true"]{background:var(--lime);border-color:var(--lime);color:#071000}
+.setup,.finish,.header{padding:18px;border:1px solid #34404c;border-radius:14px;background:#0b1016}
+.setup{display:grid;gap:12px}
+.setup label,.subheading{font-size:12px;font-weight:800;letter-spacing:.04em;color:#e6edf4}
+.setup p,.hint,.finish p{margin:0;color:var(--muted);font-size:12px;line-height:1.6}
+.setup textarea{min-height:205px;width:100%;padding:14px;border:1px solid #455363;border-radius:10px;background:#070c11;color:var(--ink);font:500 14px/1.6 ui-monospace,SFMono-Regular,monospace;resize:vertical}
+.setup textarea:focus-visible,.root button:focus-visible,.root a:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.primary,.download{display:inline-flex;justify-content:center;align-items:center;min-height:48px;padding:12px 18px;background:var(--lime);color:#071000;border:1px solid var(--lime);border-radius:10px;font:inherit;font-weight:900;text-align:center;cursor:pointer;text-decoration:none}
+.primary:disabled,.secondary:disabled{opacity:.45;cursor:not-allowed}
+.header{display:flex;justify-content:space-between;gap:12px;align-items:start;flex-wrap:wrap}
+.header h2{margin:4px 0;font-size:clamp(24px,4vw,38px);line-height:1.1}
+.header p{margin:0;color:var(--muted);font-size:12px}
+.counter{font-weight:800;color:var(--lime)}
+.steps{display:flex;flex-wrap:wrap;gap:6px}
+.step{border:1px solid #3a4652;border-radius:999px;padding:8px 12px;color:#b0becb;font-size:12px;font-weight:700}
+.step[data-state="current"]{border-color:var(--lime);color:var(--lime)}
+.step[data-state="done"]{border-color:#65793f;color:#c1e78d}
+.finish{display:grid;gap:12px;justify-items:start}
+.finish h2{margin:0;font-size:clamp(25px,4vw,38px)}
+.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.error{color:#ff999f;border:1px solid #723f44;border-radius:10px;padding:12px;background:#211115;font-size:13px}
+.preview{width:min(100%,380px);max-height:58vh;border-radius:12px;background:#000}
+@media(max-width:650px){.setup,.finish,.header{padding:12px}.actions>*{flex:1 1 100%}.setup textarea{min-height:165px}}

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { TeleprompterStudio, type TeleprompterRecording } from "@/src/components/TeleprompterStudio";
+import { MAX_SCRIPT_VARIATIONS_PER_GROUP, parseVariationScript } from "@/src/lib/variation-script";
 
 type SegmentKind = "hook" | "body" | "cta";
 type SlotState = {
@@ -26,7 +27,7 @@ type VariationRender = {
   downloadUrl: string;
 };
 
-const MAX_SEGMENTS_PER_GROUP = 4;
+const MAX_SEGMENTS_PER_GROUP = MAX_SCRIPT_VARIATIONS_PER_GROUP;
 
 const GROUPS: Array<{
   kind: SegmentKind;
@@ -81,6 +82,10 @@ export function VariationStudio() {
     cta: 3,
   });
   const [scripts, setScripts] = useState<Record<string, string>>({});
+  const [masterScript, setMasterScript] = useState("");
+  const [masterScriptError, setMasterScriptError] = useState("");
+  const [scriptImported, setScriptImported] = useState(false);
+  const [autoStartStepKey, setAutoStartStepKey] = useState("");
   const [slots, setSlots] = useState<Record<string, SlotState>>({});
   const [takes, setTakes] = useState<CapturedTake[]>([]);
   const [started, setStarted] = useState(false);
@@ -90,6 +95,12 @@ export function VariationStudio() {
   const [generating, setGenerating] = useState(false);
   const [globalError, setGlobalError] = useState("");
 
+  const parsedMasterScript = useMemo(
+    () => masterScript.trim() ? parseVariationScript(masterScript) : null,
+    [masterScript],
+  );
+  const setupCounts = parsedMasterScript?.ok ? parsedMasterScript.value.counts : counts;
+  const setupCombinationCount = setupCounts.hook * setupCounts.body * setupCounts.cta;
   const sequence = useMemo(() => buildSequence(counts), [counts]);
   const currentStep = sequence[takes.length] || null;
   const currentKey = currentStep ? slotKey(currentStep.kind, currentStep.position) : "";
@@ -127,6 +138,8 @@ export function VariationStudio() {
     if (!recording || !currentStep) return;
 
     const step = currentStep;
+    const nextStep = sequence[takes.length + 1];
+    setAutoStartStepKey(nextStep ? slotKey(nextStep.kind, nextStep.position) : "");
     setTakes((current) => [
       ...current,
       {
@@ -149,6 +162,7 @@ export function VariationStudio() {
   function addUploadedTake(file: File) {
     if (!currentStep) return;
     const step = currentStep;
+    setAutoStartStepKey("");
     setTakes((current) => [
       ...current,
       {
@@ -166,6 +180,7 @@ export function VariationStudio() {
   function deleteLastTake() {
     if (!takes.length) return;
     const last = takes[takes.length - 1];
+    setAutoStartStepKey("");
 
     setTakes((current) => current.slice(0, -1));
     setSlots((current) => {
@@ -278,20 +293,53 @@ export function VariationStudio() {
         <small>{sessionId ? "Batch name locked after the segments are saved." : "Give this recording session a name."}</small>
       </div>
 
+      {!started && <div className="variation-master-script">
+        <div className="variation-master-script-heading">
+          <div>
+            <span className="micro">ONE SCRIPT / EVERY TAKE</span>
+            <h3>Paste the whole script once.</h3>
+          </div>
+          <small>Optional — leave blank to write each prompt as you record.</small>
+        </div>
+        <p>
+          Label sections with <code>[[HOOK 1]]</code>, <code>[[BODY 1]]</code>, and <code>[[CTA 1]]</code>.
+          You can also use <code>{"{{HOOK 1}}"}</code>. The lab will read the labels,
+          set the counts, and cue each section in order.
+        </p>
+        <textarea
+          className="variation-master-script-input"
+          value={masterScript}
+          onChange={(event) => {
+            setMasterScript(event.target.value);
+            setMasterScriptError("");
+          }}
+          spellCheck
+          aria-label="Full variation script with labeled sections"
+          placeholder={"[[HOOK 1]]\nFirst opening...\n\n[[HOOK 2]]\nAlternative opening...\n\n[[BODY 1]]\nMain message...\n\n[[CTA 1]]\nYour call to action..."}
+        />
+        {masterScriptError && <p className="variation-master-script-error" role="alert">{masterScriptError}</p>}
+        {parsedMasterScript?.ok && <p className="variation-master-script-success" role="status">
+          Detected {setupCounts.hook} hook{setupCounts.hook === 1 ? "" : "s"},
+          {" "}{setupCounts.body} bod{setupCounts.body === 1 ? "y" : "ies"}, and
+          {" "}{setupCounts.cta} CTA{setupCounts.cta === 1 ? "" : "s"} —
+          {" "}{setupCombinationCount} possible videos.
+        </p>}
+      </div>}
+
       <div className="variation-count-builder">
         {GROUPS.map((group) => <div className={"variation-count-control accent-" + group.accent} key={group.kind}>
           <span>{group.plural.toUpperCase()}</span>
           <div>
             <button
               type="button"
-              disabled={started || counts[group.kind] <= 1}
+              disabled={started || Boolean(masterScript.trim()) || counts[group.kind] <= 1}
               onClick={() => updateCount(group.kind, -1)}
               aria-label={"Remove one " + group.label}
             >−</button>
-            <strong>{counts[group.kind]}</strong>
+            <strong>{setupCounts[group.kind]}</strong>
             <button
               type="button"
-              disabled={started || counts[group.kind] >= MAX_SEGMENTS_PER_GROUP}
+              disabled={started || Boolean(masterScript.trim()) || counts[group.kind] >= MAX_SEGMENTS_PER_GROUP}
               onClick={() => updateCount(group.kind, 1)}
               aria-label={"Add one " + group.label}
             >+</button>
@@ -300,16 +348,29 @@ export function VariationStudio() {
       </div>
 
       <div className="variation-target-equation">
-        <span>{counts.hook} HOOKS</span><i>×</i>
-        <span>{counts.body} BODIES</span><i>×</i>
-        <span>{counts.cta} CTAs</span><i>=</i>
-        <strong>{targetCombinationCount}<small>VIDEOS</small></strong>
+        <span>{setupCounts.hook} HOOKS</span><i>×</i>
+        <span>{setupCounts.body} BODIES</span><i>×</i>
+        <span>{setupCounts.cta} CTAs</span><i>=</i>
+        <strong>{setupCombinationCount}<small>VIDEOS</small></strong>
       </div>
 
       {!started && <button
         type="button"
         className="variation-start-sequence"
         onClick={() => {
+          if (masterScript.trim()) {
+            const parsed = parseVariationScript(masterScript);
+            if (!parsed.ok) {
+              setMasterScriptError(parsed.error);
+              return;
+            }
+            setCounts(parsed.value.counts);
+            setScripts(parsed.value.scripts);
+            setScriptImported(true);
+          } else {
+            setScriptImported(false);
+          }
+          setAutoStartStepKey("");
           setStarted(true);
           setGlobalError("");
           setRenders([]);
@@ -323,7 +384,7 @@ export function VariationStudio() {
       <span className="micro">ONE RECORDING FLOW</span>
       <h2>Set the matrix.<br/><em>Then record straight through.</em></h2>
       <p>
-        Creative Circle will cue Hook 1, then Hook 2, then every Body and CTA in order. Stop a take and the next prompt loads automatically. Delete always walks backward through your most recent takes, just like TikTok&apos;s multi-clip recorder.
+        Paste one tagged script or write prompts one at a time. Creative Circle cues each Hook, Body, and CTA in order. After each recording, review it, choose Keep &amp; Next or Redo, and the next countdown starts automatically. Delete walks backward through your kept takes.
       </p>
     </section>}
 
@@ -340,7 +401,7 @@ export function VariationStudio() {
           </h2>
           <p>
             {currentStep
-              ? "Record, stop, and Creative Circle moves to the next segment automatically."
+              ? "Record, stop, and choose Keep & Next or Redo. The next countdown starts after you keep a take."
               : "Delete the last take to step backward, or save the full stack when you are happy with it."}
           </p>
         </div>
@@ -384,14 +445,16 @@ export function VariationStudio() {
         </div>
 
         <TeleprompterStudio
-          key={currentKey}
+          sequenceStepKey={currentKey}
+          autoStartSequence={autoStartStepKey === currentKey}
           initialScript={currentScript}
           contextLabel={currentStep.kind.toUpperCase() + " " + String(currentStep.position).padStart(2, "0") + " / SCRIPT"}
           captureMode
           sequenceCaptureMode
+          scriptReadOnly={scriptImported}
           canDeletePreviousTake={takes.length > 0}
           onDeletePreviousTake={deleteLastTake}
-          onScriptChange={updateCurrentScript}
+          onScriptChange={scriptImported ? undefined : updateCurrentScript}
           onRecordingChange={markCurrentTake}
         />
       </>}

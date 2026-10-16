@@ -71,7 +71,20 @@ npm run build
 docker build -t creative-circle .
 ```
 
-Health check: `GET /api/health` verifies PostgreSQL access and the persistent media directories without exposing owner data.
+Health check: `GET /api/health` verifies PostgreSQL and media directories, and reports the **running deployment** branch and Git commit:
+
+```json
+{
+  "ok": true,
+  "deployment": {
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "shortCommit": "0123456",
+    "branch": "main"
+  }
+}
+```
+
+Use `GET /api/health?expected=<commit-sha>` to compare the live container against any Git commit; a separate `matchesExpectedCommit` field reports true/false while `ok` continues to represent application readiness. The response is always non-cacheable. Coolify supplies `SOURCE_COMMIT` and `COOLIFY_BRANCH` at runtime; local/other deployments may set `APP_REVISION` and `APP_BRANCH`. If a revision is unavailable the API returns `null` instead of guessing. The endpoint must never expose secrets.
 
 Do not commit real secrets or owner credentials.
 
