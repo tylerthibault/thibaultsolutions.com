@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DEFAULT_RECORDING_FPS, parseRecordingFrameRate, type RecordingFrameRate } from "@/src/lib/recording-quality";
 
 const TELEPROMPTER_SETTINGS_KEY = "creative-circle:teleprompter-settings:v1";
 
 type TeleprompterSettings = {
+  frameRate: RecordingFrameRate;
   speed: number;
   fontSize: number;
   eyeLinePosition: number;
@@ -83,6 +85,7 @@ The teleprompter will scroll over your live camera preview so you can keep your 
 Adjust the speed and text size until the pacing feels natural, then press Start.`;
 
 export type TeleprompterRecording = {
+  frameRate: RecordingFrameRate;
   blob: Blob;
   mimeType: string;
   url: string;
@@ -118,8 +121,9 @@ function preferredRecordingMimeType() {
   if (typeof MediaRecorder === "undefined") return "";
 
   const candidates = [
-    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    // Let the browser choose an H.264 level compatible with its camera resolution.
     "video/mp4",
+    "video/mp4;codecs=avc1.64002A,mp4a.40.2",
     "video/webm;codecs=vp9,opus",
     "video/webm;codecs=vp8,opus",
     "video/webm",
@@ -190,10 +194,18 @@ export function TeleprompterStudio({
   const [showGuide, setShowGuide] = useState(true);
   const [showControls, setShowControls] = useState(true);
   const [recording, setRecording] = useState(false);
+  const [requestedFrameRate, setRequestedFrameRate] = useState<RecordingFrameRate>(DEFAULT_RECORDING_FPS);
+  const [activeFrameRate, setActiveFrameRate] = useState<RecordingFrameRate>(DEFAULT_RECORDING_FPS);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [recordingError, setRecordingError] = useState("");
   const [recordedUrl, setRecordedUrl] = useState("");
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedFrameRate, setRecordedFrameRate] = useState<RecordingFrameRate>(30);
+  const [mp4Exporting, setMp4Exporting] = useState(false);
+  const [mp4ExportError, setMp4ExportError] = useState("");
+  const [mp4ExportUrl, setMp4ExportUrl] = useState("");
+  const mp4ExportUrlRef = useRef("");
+  const [mp4OutputFps, setMp4OutputFps] = useState<RecordingFrameRate>(30);
   const [recordedMimeType, setRecordedMimeType] = useState("");
   const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
@@ -235,7 +247,7 @@ export function TeleprompterStudio({
     recordingCanvasRef.current = null;
   }
 
-  async function createStableRecordingVideoStream(cameraStream: MediaStream) {
+  async function createStableRecordingVideoStream(cameraStream: MediaStream, frameRate: RecordingFrameRate) {
     const video = videoRef.current;
     if (!video) return new MediaStream(cameraStream.getVideoTracks());
 
@@ -260,7 +272,7 @@ export function TeleprompterStudio({
     if (!sourceWidth || !sourceHeight) return new MediaStream(cameraStream.getVideoTracks());
 
     const canvas = document.createElement("canvas");
-    const longestEdge = 1280;
+    const longestEdge = 1920;
     const scale = Math.min(1, longestEdge / Math.max(sourceWidth, sourceHeight));
     canvas.width = Math.max(2, Math.round((sourceWidth * scale) / 2) * 2);
     canvas.height = Math.max(2, Math.round((sourceHeight * scale) / 2) * 2);
@@ -281,7 +293,7 @@ export function TeleprompterStudio({
     };
     drawFrame();
 
-    const stream = canvas.captureStream(30);
+    const stream = canvas.captureStream(frameRate);
     const track = stream.getVideoTracks()[0];
     if (track && "contentHint" in track) track.contentHint = "motion";
     recordingCanvasStreamRef.current = stream;
@@ -289,6 +301,10 @@ export function TeleprompterStudio({
   }
 
   function discardRecording() {
+    if (mp4ExportUrlRef.current) URL.revokeObjectURL(mp4ExportUrlRef.current);
+    mp4ExportUrlRef.current = "";
+    setMp4ExportUrl("");
+    setMp4ExportError("");
     if (recordingUrlRef.current) {
       URL.revokeObjectURL(recordingUrlRef.current);
       recordingUrlRef.current = null;
@@ -296,6 +312,7 @@ export function TeleprompterStudio({
     setRecordedUrl("");
     setRecordedBlob(null);
     setRecordedMimeType("");
+    setRecordedFrameRate(30);
     onRecordingChange?.(null);
   }
 
@@ -307,7 +324,7 @@ export function TeleprompterStudio({
     setCameraOn(false);
   }
 
-  async function startCamera(nextFacingMode = facingMode): Promise<MediaStream | null> {
+  async function startCamera(nextFacingMode = facingMode, desiredFps = requestedFrameRate): Promise<MediaStream | null> {
     setCameraError("");
     if (recording) return streamRef.current;
 
@@ -322,14 +339,18 @@ export function TeleprompterStudio({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: nextFacingMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30, max: 30 },
+          width: { ideal: 1080 },
+          height: { ideal: 1920 },
+          aspectRatio: { ideal: 9 / 16 },
+          frameRate: { ideal: desiredFps, max: desiredFps },
         },
         audio: false,
       });
 
       streamRef.current = stream;
+      const cameraFps = stream.getVideoTracks()[0]?.getSettings().frameRate;
+      // Do not ask the canvas to manufacture 60 FPS if the camera cannot deliver it.
+      setActiveFrameRate(desiredFps === 60 && cameraFps !== undefined && cameraFps >= 50 ? 60 : 30);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
@@ -343,6 +364,12 @@ export function TeleprompterStudio({
       setCameraError(message);
       return null;
     }
+  }
+
+  async function changeFrameRate(next: RecordingFrameRate) {
+    if (recording || countdownValue !== null) return;
+    setRequestedFrameRate(next);
+    if (cameraOn) await startCamera(facingMode, next);
   }
 
   async function switchCamera() {
@@ -526,6 +553,9 @@ export function TeleprompterStudio({
     const hasLiveVideo = cameraStream?.getVideoTracks().some((track) => track.readyState === "live") === true;
     if (!hasLiveVideo) cameraStream = await startCamera();
     if (!cameraStream) return false;
+    const cameraFps = cameraStream.getVideoTracks()[0]?.getSettings().frameRate;
+    const effectiveFps: RecordingFrameRate = requestedFrameRate === 60 && cameraFps !== undefined && cameraFps >= 50 ? 60 : 30;
+    setActiveFrameRate(effectiveFps);
 
     try {
       stopMic();
@@ -543,16 +573,26 @@ export function TeleprompterStudio({
       // raw mobile camera track. Current iOS/WebKit builds can expose the raw
       // sensor buffer with unstable orientation/encoding; drawing the displayed
       // frame to a fixed canvas makes the recorded geometry and frame stream stable.
-      const stableVideoStream = await createStableRecordingVideoStream(cameraStream);
+      const stableVideoStream = await createStableRecordingVideoStream(cameraStream, effectiveFps);
       const recordingStream = new MediaStream([
         ...stableVideoStream.getVideoTracks(),
         ...micStream.getAudioTracks(),
       ]);
 
       const mimeType = preferredRecordingMimeType();
-      const recorder = mimeType
-        ? new MediaRecorder(recordingStream, { mimeType })
-        : new MediaRecorder(recordingStream);
+      // Ask for good source quality. The server always creates editor-friendly H.264/AAC MP4.
+      const options: MediaRecorderOptions = {
+        ...(mimeType ? { mimeType } : {}),
+        videoBitsPerSecond: effectiveFps === 60 ? 12_000_000 : 8_000_000,
+        audioBitsPerSecond: 192_000,
+      };
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(recordingStream, options);
+      } catch {
+        // Safari may reject explicit bitrates; use its supported encoder defaults.
+        recorder = mimeType ? new MediaRecorder(recordingStream, { mimeType }) : new MediaRecorder(recordingStream);
+      }
 
       chunksRef.current = [];
       recorderRef.current = recorder;
@@ -585,9 +625,11 @@ export function TeleprompterStudio({
         recordingUrlRef.current = url;
         setRecordedBlob(blob);
         setRecordedMimeType(finalType);
+        setRecordedFrameRate(effectiveFps);
         setRecordedUrl(url);
         if (!sequenceCaptureMode) {
           onRecordingChange?.({
+            frameRate: effectiveFps,
             blob,
             mimeType: finalType,
             url,
@@ -677,6 +719,7 @@ export function TeleprompterStudio({
     if (!recordedBlob || !recordedUrl) return;
     onRecordingChange?.({
       blob: recordedBlob,
+      frameRate: recordedFrameRate,
       mimeType: recordedMimeType || recordedBlob.type,
       url: recordedUrl,
       filename: recordingFilename(recordedMimeType || recordedBlob.type),
@@ -696,6 +739,34 @@ export function TeleprompterStudio({
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
+  }
+
+  async function exportCompatibleMp4() {
+    if (!recordedBlob || mp4Exporting) return;
+    setMp4ExportError("");
+    setMp4Exporting(true);
+    try {
+      const form = new FormData();
+      form.append("frameRate", String(recordedFrameRate));
+      const mimeType = recordedMimeType || recordedBlob.type || "video/webm";
+      form.append("clips", recordedBlob, recordingFilename(mimeType));
+      const response = await fetch("/api/creative-circle/recordings/assemble", { method: "POST", body: form });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error || "MP4 export failed.");
+      }
+      const video = await response.blob();
+      if (!video.size) throw new Error("The MP4 was empty. Try again.");
+      if (mp4ExportUrlRef.current) URL.revokeObjectURL(mp4ExportUrlRef.current);
+      const url = URL.createObjectURL(video);
+      mp4ExportUrlRef.current = url;
+      setMp4ExportUrl(url);
+      setMp4OutputFps(response.headers.get("X-Creative-Circle-Frame-Rate") === "60" ? 60 : 30);
+    } catch (error) {
+      setMp4ExportError(error instanceof Error ? error.message : "MP4 export failed.");
+    } finally {
+      setMp4Exporting(false);
+    }
   }
 
   async function shareRecording() {
@@ -728,6 +799,7 @@ export function TeleprompterStudio({
         if (raw) {
           const saved = JSON.parse(raw) as Partial<TeleprompterSettings>;
           setSpeed(clampNumber(saved.speed, 10, 110, 38));
+          setRequestedFrameRate(parseRecordingFrameRate(saved.frameRate) ?? DEFAULT_RECORDING_FPS);
           setFontSize(clampNumber(saved.fontSize, 26, 76, 44));
           setEyeLinePosition(clampNumber(saved.eyeLinePosition, 20, 72, 42));
           if (saved.facingMode === "user" || saved.facingMode === "environment") {
@@ -756,6 +828,7 @@ export function TeleprompterStudio({
     if (!settingsLoaded) return;
 
     const settings: TeleprompterSettings = {
+      frameRate: requestedFrameRate,
       speed,
       fontSize,
       eyeLinePosition,
@@ -772,7 +845,7 @@ export function TeleprompterStudio({
     } catch {
       // Private browsing/storage restrictions can disable localStorage.
     }
-  }, [settingsLoaded, speed, fontSize, eyeLinePosition, facingMode, mirror, showGuide, showControls, countdownSeconds, remoteBinding]);
+  }, [settingsLoaded, requestedFrameRate, speed, fontSize, eyeLinePosition, facingMode, mirror, showGuide, showControls, countdownSeconds, remoteBinding]);
 
   useEffect(() => {
     scriptRef.current = script;
@@ -1063,6 +1136,7 @@ export function TeleprompterStudio({
       // Recognition can already be stopped by the browser.
     }
     if (recordingUrlRef.current) URL.revokeObjectURL(recordingUrlRef.current);
+    if (mp4ExportUrlRef.current) URL.revokeObjectURL(mp4ExportUrlRef.current);
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
   }, []);
 
@@ -1115,6 +1189,13 @@ export function TeleprompterStudio({
         </div>
 
         <div className="teleprompter-settings">
+          <label>
+            <span><b>RECORDING FRAME RATE</b><output>{activeFrameRate} FPS {cameraOn && requestedFrameRate === 60 && activeFrameRate === 30 ? "(CAMERA LIMITED)" : ""}</output></span>
+            <select aria-label="Recording frame rate" disabled={recording || countdownValue !== null} value={requestedFrameRate} onChange={(event) => void changeFrameRate(Number(event.target.value) as RecordingFrameRate)}>
+              <option value={30}>30 FPS · Reliable</option>
+              <option value={60}>60 FPS · Smooth motion (if supported)</option>
+            </select>
+          </label>
           <label>
             <span><b>SPEED</b><output>{speed} px/s</output></span>
             <input
@@ -1249,7 +1330,7 @@ export function TeleprompterStudio({
       <div className="teleprompter-toolbar">
         <div className="teleprompter-camera-state">
           <span className={cameraOn ? "live" : ""}><i /> {cameraOn ? "CAMERA LIVE" : "CAMERA OFF"}</span>
-          <small>{facingMode === "user" ? "FRONT CAMERA" : "REAR CAMERA"} · MIC RECORDS WITH VIDEO</small>
+          <small>{facingMode === "user" ? "FRONT CAMERA" : "REAR CAMERA"} · {cameraOn ? activeFrameRate + " FPS CAMERA" : requestedFrameRate + " FPS REQUESTED"} · MIC RECORDS WITH VIDEO</small>
         </div>
 
         <div className="teleprompter-toolbar-actions">
@@ -1413,13 +1494,17 @@ export function TeleprompterStudio({
           <p>
             {captureMode
               ? "Review the take, then add it to your variation batch when it feels right."
-              : "Review the take, save it to this device, or use Share on mobile to send it directly into your editing workflow."}
+              : "Review your take and create a high-quality MP4 for CapCut or any video editor. The original browser recording is still available."}
           </p>
           <div className="teleprompter-recording-actions">
-            <button type="button" className="primary" onClick={downloadRecording}>SAVE RECORDING</button>
+            {!captureMode && (mp4ExportUrl
+              ? <a className="primary" href={mp4ExportUrl} download="creative-circle-recording.mp4">DOWNLOAD MP4 · {mp4OutputFps} FPS</a>
+              : <button type="button" className="primary" disabled={mp4Exporting} onClick={() => void exportCompatibleMp4()}>{mp4Exporting ? "PREPARING MP4…" : "EXPORT MP4 FOR CAPCUT"}</button>)}
+            <button type="button" onClick={downloadRecording}>SAVE ORIGINAL</button>
             <button type="button" onClick={() => void shareRecording()}>SHARE</button>
-            <button type="button" onClick={discardRecording}>DISCARD</button>
+            <button type="button" disabled={mp4Exporting} onClick={discardRecording}>DISCARD</button>
           </div>
+          {mp4ExportError && <p role="alert" className="teleprompter-camera-error">{mp4ExportError}</p>}
         </div>
         <video className="teleprompter-recording-preview" src={recordedUrl} controls playsInline />
       </section>}

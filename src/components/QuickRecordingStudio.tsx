@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { TeleprompterStudio, type TeleprompterRecording } from "@/src/components/TeleprompterStudio";
 import { parseQuickRecordingScript, type QuickRecordingClip, type QuickRecordingId } from "@/src/lib/quick-recording";
 import styles from "./QuickRecordingStudio.module.css";
+import type { RecordingFrameRate } from "@/src/lib/recording-quality";
 
-type KeptTake = { id: QuickRecordingId; blob: Blob; mimeType: string };
+type KeptTake = { id: QuickRecordingId; blob: Blob; mimeType: string; frameRate: RecordingFrameRate };
 
 export function QuickRecordingStudio() {
   const [mode, setMode] = useState<"quick" | "single">("quick");
@@ -16,6 +17,7 @@ export function QuickRecordingStudio() {
   const [error, setError] = useState("");
   const [assembling, setAssembling] = useState(false);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [exportFrameRate, setExportFrameRate] = useState<RecordingFrameRate>(30);
   const [resultUrl, setResultUrl] = useState("");
   const resultUrlRef = useRef("");
 
@@ -28,6 +30,7 @@ export function QuickRecordingStudio() {
     resultUrlRef.current = "";
     setResultBlob(null);
     setResultUrl("");
+    setExportFrameRate(30);
   }
 
   function begin() {
@@ -49,7 +52,7 @@ export function QuickRecordingStudio() {
     const current = queue[index];
     if (!current) return;
     setTakes((previous) => previous.length === index
-      ? [...previous, { id: current.id, blob: recording.blob, mimeType: recording.mimeType }]
+      ? [...previous, { id: current.id, blob: recording.blob, mimeType: recording.mimeType, frameRate: recording.frameRate }]
       : previous);
     setAutoStartStep(queue[index + 1]?.id ?? null);
     clearResult();
@@ -86,6 +89,7 @@ export function QuickRecordingStudio() {
     setAssembling(true);
     try {
       const form = new FormData();
+      form.append("frameRate", takes.every((take) => take.frameRate === 60) ? "60" : "30");
       for (const take of takes) {
         const ext = take.mimeType.includes("mp4") ? "mp4" : take.mimeType.includes("quicktime") ? "mov" : "webm";
         form.append("clips", take.blob, take.id + "." + ext);
@@ -95,6 +99,8 @@ export function QuickRecordingStudio() {
         const payload = await response.json().catch(() => ({})) as { error?: string };
         throw new Error(payload.error || "The video could not be created.");
       }
+      const actualFps = response.headers.get("X-Creative-Circle-Frame-Rate");
+      setExportFrameRate(actualFps === "60" ? 60 : 30);
       const blob = await response.blob();
       if (!blob.size) throw new Error("The server returned an empty video. Please try again.");
       const url = URL.createObjectURL(blob);
@@ -173,10 +179,11 @@ export function QuickRecordingStudio() {
 
       {finished && <section className={styles.finish}>
         <h2>{resultUrl ? "Your video is ready" : "One video, no editor"}</h2>
-        <p>{resultUrl ? "Download the finished MP4, or use Share on your phone to send it to your computer." : "Join all kept takes in order as one 720 × 1280 MP4. Your prompts and controls will not appear in the video."}</p>
+        <p>{resultUrl ? "Download the finished MP4, or use Share on your phone to send it to your computer." : "Join all kept takes in order as one 1080 × 1920 MP4 (H.264 video and AAC audio). Your prompts and controls will not appear in the video."}</p>
         {resultUrl && <video className={styles.preview} src={resultUrl} controls playsInline aria-label="Finished video preview" />}
         <div className={styles.actions}>
           {resultUrl ? <>
+            <span className={styles.hint}>1080 × 1920 · {exportFrameRate} FPS · H.264 + AAC · CapCut-ready MP4</span>
             <a className={styles.download} href={resultUrl} download="creative-circle-recording.mp4">Download video ↓</a>
             {typeof navigator !== "undefined" && typeof navigator.share === "function" && <button type="button" className={styles.secondary} onClick={() => void share()}>Share / AirDrop</button>}
           </> : <button type="button" className={styles.primary} disabled={assembling} onClick={() => void assemble()}>
@@ -185,7 +192,7 @@ export function QuickRecordingStudio() {
           <button type="button" className={styles.secondary} disabled={assembling} onClick={removeLastTake}>Redo last part</button>
           <button type="button" className={styles.secondary} disabled={assembling} onClick={reset}>Start over</button>
         </div>
-        <p className={styles.hint}>Takes remain on this device until you leave or refresh this page. Download the finished video before leaving.</p>
+        <p className={styles.hint}>Takes remain on this device until you leave or refresh. Export keeps 60 FPS only when every take supports it; otherwise it uses 30 FPS. Download before leaving.</p>
       </section>}
 
       {error && <p className={styles.error} role="alert">{error}</p>}

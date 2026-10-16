@@ -9,13 +9,16 @@ import { apiUser } from "@/src/lib/api-auth";
 import { ensureStorage, storagePath } from "@/src/lib/storage";
 import { pruneQuickRecordingTemps, QUICK_RECORDING_TEMP_PREFIX } from "@/src/lib/quick-recording-storage";
 import { assembleVariationVideo, normalizeVariationSegment } from "@/src/lib/variation-video";
+import { commonExportFrameRate, parseRecordingFrameRate, QUICK_EXPORT_HEIGHT, QUICK_EXPORT_WIDTH } from "@/src/lib/recording-quality";
+import { probeVideo } from "@/src/lib/video";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const MAX_CLIPS = 4;
-const MAX_CLIP_BYTES = 60 * 1024 * 1024;
-const MAX_REQUEST_BYTES = MAX_CLIPS * MAX_CLIP_BYTES + 2 * 1024 * 1024;
+const MAX_CLIP_BYTES = 128 * 1024 * 1024;
+const MAX_TOTAL_CLIPS_BYTES = 384 * 1024 * 1024;
+const MAX_REQUEST_BYTES = MAX_TOTAL_CLIPS_BYTES + 2 * 1024 * 1024;
 const VIDEO_TYPES = new Map([
   ["video/mp4", ".mp4"],
   ["video/quicktime", ".mov"],
@@ -35,11 +38,13 @@ export async function POST(request: Request) {
   }
   const length = Number(request.headers.get("content-length") ?? 0);
   if (length > MAX_REQUEST_BYTES) {
-    return NextResponse.json({ error: "Combined recordings are too large (240 MB maximum)." }, { status: 413 });
+    return NextResponse.json({ error: "Combined recordings are too large (384 MB maximum)." }, { status: 413 });
   }
 
   const form = await request.formData().catch(() => null);
   if (!form) return NextResponse.json({ error: "Could not read the video upload." }, { status: 400 });
+  const requestedFps = parseRecordingFrameRate(form.get("frameRate"));
+  if (!requestedFps) return NextResponse.json({ error: "Choose a valid 30 or 60 FPS export." }, { status: 400 });
   const parts = form.getAll("clips");
   if (parts.length < 1 || parts.length > MAX_CLIPS || parts.some((part) => !(part instanceof File))) {
     return NextResponse.json({ error: "Send between one and four recorded video clips." }, { status: 400 });
@@ -49,8 +54,8 @@ export async function POST(request: Request) {
   const uploads = parts as File[];
   for (const part of uploads) {
     totalBytes += part.size;
-    if (!part.size || part.size > MAX_CLIP_BYTES || totalBytes > MAX_CLIPS * MAX_CLIP_BYTES) {
-      return NextResponse.json({ error: "A clip is empty or exceeds 60 MB, or the total exceeds 240 MB." }, { status: 413 });
+    if (!part.size || part.size > MAX_CLIP_BYTES || totalBytes > MAX_TOTAL_CLIPS_BYTES) {
+      return NextResponse.json({ error: "A clip is empty or exceeds 128 MB, or the total exceeds 384 MB." }, { status: 413 });
     }
     if (!VIDEO_TYPES.has(part.type.split(";")[0].toLowerCase())) {
       return NextResponse.json({ error: "Unsupported recording format. Use MP4, MOV, M4V, or WebM." }, { status: 415 });
@@ -64,13 +69,30 @@ export async function POST(request: Request) {
   let handingOffStream = false;
 
   try {
-    const prepared: string[] = [];
+    const sourceFiles: string[] = [];
+    const sourceFrameRates: string[] = [];
     for (const [index, part] of uploads.entries()) {
       const ext = VIDEO_TYPES.get(part.type.split(";")[0].toLowerCase())!;
       const incoming = path.join(directory, "source-" + index + ext);
-      const normalized = path.join(directory, "clip-" + index + ".mp4");
       await pipeline(Readable.fromWeb(part.stream() as never), createWriteStream(incoming, { flags: "wx" }));
-      await normalizeVariationSegment(incoming, normalized);
+      const metadata = await probeVideo(incoming);
+      sourceFiles.push(incoming);
+      sourceFrameRates.push(metadata.frameRate);
+    }
+
+    // This is a real source-rate decision, not a 30 -> 60 FPS frame-duplication switch.
+    const exportFps = commonExportFrameRate(requestedFps, sourceFrameRates);
+    const prepared: string[] = [];
+    for (const [index, incoming] of sourceFiles.entries()) {
+      const normalized = path.join(directory, "clip-" + index + ".mp4");
+      await normalizeVariationSegment(incoming, normalized, {
+        width: QUICK_EXPORT_WIDTH,
+        height: QUICK_EXPORT_HEIGHT,
+        frameRate: exportFps,
+        qualityCrf: 18,
+        audioBitrate: "192k",
+        fillPortrait: true,
+      });
       prepared.push(normalized);
     }
 
@@ -94,6 +116,8 @@ export async function POST(request: Request) {
     return new Response(Readable.toWeb(stream) as ReadableStream, {
       headers: {
         "Content-Type": "video/mp4",
+        "X-Creative-Circle-Frame-Rate": String(exportFps),
+        "X-Creative-Circle-Resolution": QUICK_EXPORT_WIDTH + "x" + QUICK_EXPORT_HEIGHT,
         "Content-Length": String(fileBytes),
         "Content-Disposition": 'attachment; filename="creative-circle-recording.mp4"',
         "Cache-Control": "private, no-store",

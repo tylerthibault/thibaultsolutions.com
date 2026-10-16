@@ -65,8 +65,23 @@ function runFfmpeg(args: string[], timeoutMs = 15 * 60 * 1000) {
   });
 }
 
-export async function normalizeVariationSegment(input: string, output: string) {
+export type SegmentEncoding = {
+  width?: number;
+  height?: number;
+  frameRate?: 30 | 60;
+  qualityCrf?: number;
+  audioBitrate?: string;
+  fillPortrait?: boolean;
+};
+
+/** Default parameters preserve the Variation Studio's existing 720p / 30 FPS exports. */
+export async function normalizeVariationSegment(input: string, output: string, encoding: SegmentEncoding = {}) {
   const source = await probeVideo(input);
+  const width = encoding.width ?? 720;
+  const height = encoding.height ?? 1280;
+  const frameRate = encoding.frameRate ?? 30;
+  const qualityCrf = encoding.qualityCrf ?? 21;
+  const audioBitrate = encoding.audioBitrate ?? "160k";
   const args = ["-hide_banner", "-loglevel", "error", "-y", "-i", input];
 
   if (!source.hasAudio) {
@@ -76,13 +91,15 @@ export async function normalizeVariationSegment(input: string, output: string) {
   args.push(
     "-map", "0:v:0",
     "-map", source.hasAudio ? "0:a:0" : "1:a:0",
-    "-vf", "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=30",
+    "-vf", encoding.fillPortrait
+      ? `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,fps=${frameRate}`
+      : `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=${frameRate}`,
     "-c:v", "libx264",
     "-preset", "veryfast",
-    "-crf", "21",
+    "-crf", String(qualityCrf),
     "-pix_fmt", "yuv420p",
     "-c:a", "aac",
-    "-b:a", "160k",
+    "-b:a", audioBitrate,
     "-ar", "48000",
     "-ac", "2",
   );

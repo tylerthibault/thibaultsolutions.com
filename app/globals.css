@@ -2416,3 +2416,10 @@
 /* V6.1: edit current script without touching any recorded takes. */
 .teleprompter-fullscreen-edit{position:absolute;z-index:18;top:12px;right:56px;min-height:42px;padding:9px 12px;border:1px solid #5c6877;border-radius:9px;background:#101820;color:#fff;font-size:10px;font-weight:800;cursor:pointer}
 .teleprompter-fullscreen-edit:disabled{opacity:.4;cursor:not-allowed}
+
+/* Editor-friendly recording controls */
+.teleprompter-settings select{width:100%;min-height:42px;background:#0c131a;color:#e3ecf5;border:1px solid #405060;border-radius:8px;padding:8px 10px;font-size:12px}
+.teleprompter-settings select:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.teleprompter-settings select:disabled{opacity:.5}
+.teleprompter-recording-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 11px;border:1px solid #303a45;border-radius:9px;background:#0b0f14;color:#949faa;font-size:9px;font-weight:900;text-decoration:none}
+.teleprompter-recording-actions a.primary{border-color:#ffcf5a;background:#ffcf5a;color:#171106}
