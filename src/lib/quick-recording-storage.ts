@@ -1,6 +1,5 @@
 import { readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { storagePath } from "./storage.js";
 
 export const QUICK_RECORDING_TEMP_PREFIX = "quick-recording-";
 export const QUICK_RECORDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -10,7 +9,7 @@ export const QUICK_RECORDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
  * storage, including Variation Studio files, must remain untouched.
  */
 export async function pruneQuickRecordingTemps(
-  directory = storagePath("temp", "."),
+  directory: string,
   now = Date.now(),
 ) {
   const entries = await readdir(directory, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {

@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   await ensureStorage();
-  await pruneQuickRecordingTemps().catch(() => undefined);
+  await pruneQuickRecordingTemps(storagePath("temp", ".")).catch(() => undefined);
   const directory = storagePath("temp", QUICK_RECORDING_TEMP_PREFIX + randomUUID());
   await mkdir(directory);
   let handingOffStream = false;

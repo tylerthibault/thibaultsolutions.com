@@ -32,7 +32,7 @@ await boss.work(QUEUE,async ([job])=>{
   }catch(error){const message=error instanceof Error?error.message:String(error); await db.update(renderJobs).set({status:"failed",error:message.slice(0,2000),updatedAt:new Date(),completedAt:new Date()}).where(eq(renderJobs.id,renderJobId)); console.error(JSON.stringify({event:"render.failed",renderId:renderJobId,error:message,startedAt:started.toISOString(),endedAt:new Date().toISOString()})); throw error;}
 });
 const cleanupQuickRecordings = () => {
-  void pruneQuickRecordingTemps().catch((error) => console.error("Quick recording temp cleanup failed", error));
+  void pruneQuickRecordingTemps(path.join(root, "temp")).catch((error) => console.error("Quick recording temp cleanup failed", error));
 };
 // The web response cleans up immediately; this handles interrupted requests.
 const cleanupTimer = setInterval(cleanupQuickRecordings, 60 * 60 * 1000);
