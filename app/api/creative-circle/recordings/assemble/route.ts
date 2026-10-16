@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, readdir, rm, stat } from "node:fs/promises";
+import { mkdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { NextResponse } from "next/server";
 import { apiUser } from "@/src/lib/api-auth";
 import { ensureStorage, storagePath } from "@/src/lib/storage";
+import { pruneQuickRecordingTemps, QUICK_RECORDING_TEMP_PREFIX } from "@/src/lib/quick-recording-storage";
 import { assembleVariationVideo, normalizeVariationSegment } from "@/src/lib/variation-video";
 
 export const runtime = "nodejs";
@@ -15,7 +16,6 @@ export const maxDuration = 300;
 const MAX_CLIPS = 4;
 const MAX_CLIP_BYTES = 60 * 1024 * 1024;
 const MAX_REQUEST_BYTES = MAX_CLIPS * MAX_CLIP_BYTES + 2 * 1024 * 1024;
-const MAX_TEMP_AGE_MS = 24 * 60 * 60 * 1000;
 const VIDEO_TYPES = new Map([
   ["video/mp4", ".mp4"],
   ["video/quicktime", ".mov"],
@@ -23,21 +23,8 @@ const VIDEO_TYPES = new Map([
   ["video/webm", ".webm"],
 ]);
 
-// Successful exports are removed as soon as the response stream closes.
-// Any abandoned work directory is removed on the next request after 24 hours.
-async function pruneAbandonedRecordings() {
-  const temp = storagePath("temp", ".");
-  const now = Date.now();
-  const entries = await readdir(temp, { withFileTypes: true });
-  await Promise.all(entries.filter((entry) => entry.isDirectory() && entry.name.startsWith("quick-recording-")).map(async (entry) => {
-    const target = path.join(temp, entry.name);
-    const info = await stat(target).catch(() => null);
-    if (info && now - info.mtimeMs > MAX_TEMP_AGE_MS) {
-      await rm(target, { recursive: true, force: true }).catch(() => undefined);
-    }
-  }));
-}
-
+// Successful exports are removed when streaming ends. The worker sweeps
+// abandoned directories hourly once they reach 24 hours old.
 export async function POST(request: Request) {
   const user = await apiUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -71,8 +58,8 @@ export async function POST(request: Request) {
   }
 
   await ensureStorage();
-  await pruneAbandonedRecordings().catch(() => undefined);
-  const directory = storagePath("temp", "quick-recording-" + randomUUID());
+  await pruneQuickRecordingTemps().catch(() => undefined);
+  const directory = storagePath("temp", QUICK_RECORDING_TEMP_PREFIX + randomUUID());
   await mkdir(directory);
   let handingOffStream = false;
 

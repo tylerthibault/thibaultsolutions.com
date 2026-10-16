@@ -7,6 +7,7 @@ import { Pool } from "pg";
 import { and, eq } from "drizzle-orm";
 import { exportsTable, mediaAssets, projects, renderJobs } from "../src/lib/schema.js";
 import { filtersForStack } from "../src/lib/effects/export.js";
+import { pruneQuickRecordingTemps } from "../src/lib/quick-recording-storage.js";
 
 const databaseUrl=process.env.DATABASE_URL; if(!databaseUrl) throw new Error("DATABASE_URL is required");
 const root=path.resolve(process.env.MEDIA_STORAGE_PATH??"/data"); const ffmpeg=process.env.FFMPEG_PATH??"ffmpeg";
@@ -30,5 +31,12 @@ await boss.work(QUEUE,async ([job])=>{
     console.log(JSON.stringify({event:"render.complete",renderId:render.id,projectId:row.project.id,effects:row.project.effectStack.map(x=>x.effectId),source:{width:row.asset.width,height:row.asset.height,durationMs:row.asset.durationMs},startedAt:started.toISOString(),endedAt:new Date().toISOString()}));
   }catch(error){const message=error instanceof Error?error.message:String(error); await db.update(renderJobs).set({status:"failed",error:message.slice(0,2000),updatedAt:new Date(),completedAt:new Date()}).where(eq(renderJobs.id,renderJobId)); console.error(JSON.stringify({event:"render.failed",renderId:renderJobId,error:message,startedAt:started.toISOString(),endedAt:new Date().toISOString()})); throw error;}
 });
+const cleanupQuickRecordings = () => {
+  void pruneQuickRecordingTemps().catch((error) => console.error("Quick recording temp cleanup failed", error));
+};
+// The web response cleans up immediately; this handles interrupted requests.
+const cleanupTimer = setInterval(cleanupQuickRecordings, 60 * 60 * 1000);
+cleanupTimer.unref();
+cleanupQuickRecordings();
 console.log("Creative Circle worker ready");
-process.on("SIGTERM",async()=>{await boss.stop();await pool.end();process.exit(0)});
+process.on("SIGTERM",async()=>{clearInterval(cleanupTimer);await boss.stop();await pool.end();process.exit(0)});
