@@ -151,6 +151,7 @@ export function TeleprompterStudio({
   onRecordingChange,
 }: TeleprompterStudioProps = {}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -458,6 +459,16 @@ export function TeleprompterStudio({
       startPlayback(false, false);
     }
   }, [pausePlayback, restartPlayback, resumePlayback, startPlayback]);
+
+  function openScriptEditor() {
+    if (recording) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => undefined);
+    }
+    setPseudoFullscreen(false);
+    setShowControls(true);
+    window.setTimeout(() => editorRef.current?.focus(), 75);
+  }
 
   async function toggleFullscreen() {
     const stage = stageRef.current;
@@ -1066,7 +1077,7 @@ export function TeleprompterStudio({
           {showControls && !scriptReadOnly && <button
             className="teleprompter-clear-script"
             type="button"
-            onClick={() => { setScript(""); resetPrompt(); }}
+            onClick={() => { setScript(""); onScriptChange?.(""); resetPrompt(); }}
             disabled={!script}
           >
             CLEAR SCRIPT
@@ -1084,6 +1095,7 @@ export function TeleprompterStudio({
 
       {showControls && <>
         <textarea
+          ref={editorRef}
           className="teleprompter-script-input"
           value={script}
           readOnly={scriptReadOnly}
@@ -1241,6 +1253,7 @@ export function TeleprompterStudio({
         </div>
 
         <div className="teleprompter-toolbar-actions">
+          <button type="button" disabled={recording} onClick={openScriptEditor}>EDIT PROMPT</button>
           <button type="button" disabled={recording} onClick={() => cameraOn ? stopCamera() : void startCamera()}>
             {cameraOn ? "STOP CAMERA" : "ENABLE CAMERA"}
           </button>
@@ -1287,6 +1300,8 @@ export function TeleprompterStudio({
           onClick={() => void toggleFullscreen()}
           aria-label="Exit fullscreen"
         >×</button>}
+
+        {fullscreenActive && <button type="button" className="teleprompter-fullscreen-edit" disabled={recording} onClick={openScriptEditor}>EDIT PROMPT</button>}
 
         {pseudoFullscreen && fullscreenInstallHint && <div className="teleprompter-fullscreen-hint">
           <strong>BROWSER-FREE MODE</strong>
